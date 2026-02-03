@@ -1,0 +1,21 @@
+{
+  "paths": [
+    "C:\\Users\\YourUsername\\Documents",
+    "C:\\CORP BOX\\Box"
+  ],
+  "countMode": "Both",
+  "recursive": true,
+  "maxDepth": 1,
+  "parallelThreads": 4,
+  "includeHiddenFiles": false,
+  "boxDriveRefreshEnabled": true,
+  "boxDriveRefreshTimeoutSeconds": 30,
+  "enableFileTypeBreakdown": true,
+  "includeFileTypes": [ ".docx", ".xlsx", ".pdf" ],
+  "excludeFileTypes": [ ".tmp", ".log" ],
+  "outputFormat": "csv",
+  "outputPath": "C:\\Reports\\scan_results_{timestamp}.csv",
+  "enableHistory": true,
+  "enableComparison": true,
+  "comparisonRetentionDays": 90
+}
