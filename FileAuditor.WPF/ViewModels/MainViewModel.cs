@@ -83,6 +83,28 @@ namespace FileAuditor.WPF.ViewModels
         [ObservableProperty]
         private ScanConfiguration? _selectedConfiguration;
 
+        // new proerties
+        [ObservableProperty]
+        private string _outputFormat = "csv";
+
+        [ObservableProperty]
+        private string _outputPath = "scan_results_{timestamp}.csv";
+
+        [ObservableProperty]
+        private bool _enableHistory = true;
+
+        [ObservableProperty]
+        private bool _enableComparison = false;
+
+        [ObservableProperty]
+        private int _comparisonRetentionDays = 90;
+
+        public ObservableCollection<string> OutputFormats { get; } = new()
+{
+    "csv",
+    "json"
+};
+
         public ObservableCollection<CountMode> CountModes { get; } = new()
         {
             CountMode.Both,
@@ -377,7 +399,13 @@ namespace FileAuditor.WPF.ViewModels
                     BoxDriveRefreshTimeoutSeconds = BoxDriveRefreshTimeout,
                     EnableFileTypeBreakdown = EnableFileTypeBreakdown,
                     IncludeFileTypes = ParseFileTypes(IncludeFileTypes),
-                    ExcludeFileTypes = ParseFileTypes(ExcludeFileTypes)
+                    ExcludeFileTypes = ParseFileTypes(ExcludeFileTypes),
+                    // New properties
+                    OutputFormat = OutputFormat,
+                    OutputPath = OutputPath,
+                    EnableHistory = EnableHistory,
+                    EnableComparison = EnableComparison,
+                    ComparisonRetentionDays = ComparisonRetentionDays
                 };
 
                 await _historyService.SaveConfigurationAsync(config);
@@ -407,6 +435,13 @@ namespace FileAuditor.WPF.ViewModels
             EnableFileTypeBreakdown = SelectedConfiguration.EnableFileTypeBreakdown;
             IncludeFileTypes = string.Join(", ", SelectedConfiguration.IncludeFileTypes);
             ExcludeFileTypes = string.Join(", ", SelectedConfiguration.ExcludeFileTypes);
+
+            // Load new properties
+            OutputFormat = SelectedConfiguration.OutputFormat;
+            OutputPath = SelectedConfiguration.OutputPath;
+            EnableHistory = SelectedConfiguration.EnableHistory;
+            EnableComparison = SelectedConfiguration.EnableComparison;
+            ComparisonRetentionDays = SelectedConfiguration.ComparisonRetentionDays;
 
             StatusMessage = $"Loaded configuration '{SelectedConfiguration.Name}'";
             await Task.CompletedTask;

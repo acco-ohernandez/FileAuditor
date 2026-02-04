@@ -179,6 +179,41 @@
                         </StackPanel>
                     </GroupBox>
 
+                    <!-- CLI/Output Settings -->
+                    <GroupBox Header="CLI / Output Settings" Style="{StaticResource GroupBoxStyle}">
+                        <StackPanel>
+                            <TextBlock Text="Output Format:" Margin="0,0,0,5"/>
+                            <ComboBox ItemsSource="{Binding OutputFormats}"
+                                      SelectedItem="{Binding OutputFormat}"
+                                      Margin="0,0,0,10"/>
+
+                            <TextBlock Text="Output Path:" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding OutputPath, UpdateSourceTrigger=PropertyChanged}"
+                                     Margin="0,0,0,5"/>
+                            <TextBlock Text="Use {timestamp} for date/time"
+                                       FontSize="10" 
+                                       Foreground="Gray" 
+                                       Margin="0,0,0,10"/>
+
+                            <CheckBox Content="Enable scan history"
+                                      IsChecked="{Binding EnableHistory}"
+                                      Margin="0,5"/>
+
+                            <CheckBox Content="Enable comparison tracking"
+                                      IsChecked="{Binding EnableComparison}"
+                                      Margin="0,5"/>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,5">
+                                <TextBlock Text="Retention (days):" 
+                                           VerticalAlignment="Center" 
+                                           Width="120"/>
+                                <TextBox Text="{Binding ComparisonRetentionDays, UpdateSourceTrigger=PropertyChanged}"
+                                         Width="100"
+                                         IsEnabled="{Binding EnableComparison}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </GroupBox>
+
                     <!-- Saved Configurations -->
                     <GroupBox Header="Saved Configurations" Style="{StaticResource GroupBoxStyle}">
                         <StackPanel>
