@@ -1,18 +1,31 @@
 {
   "paths": [
-    "C:\\Users\\YourUsername\\Documents",
-    "C:\\CORP BOX\\Box"
+    {
+      "path": "C:\\Users\\YourUsername\\Documents",
+      "isBoxDrivePath": false,
+      "isNetworkPath": false,
+      "isValid": true,
+      "validationError": null
+    },
+    {
+      "path": "C:\\CORP BOX\\Box",
+      "isBoxDrivePath": true,
+      "isNetworkPath": false,
+      "isValid": true,
+      "validationError": null
+    }
   ],
   "countMode": "Both",
-  "recursive": true,
+  "isRecursive": true,
   "maxDepth": 1,
-  "parallelThreads": 4,
+  "parallelThreadCount": 4,
   "includeHiddenFiles": false,
   "boxDriveRefreshEnabled": true,
   "boxDriveRefreshTimeoutSeconds": 30,
   "enableFileTypeBreakdown": true,
   "includeFileTypes": [ ".docx", ".xlsx", ".pdf" ],
   "excludeFileTypes": [ ".tmp", ".log" ],
+  "name": "Weekly Audit Configuration",
   "outputFormat": "csv",
   "outputPath": "C:\\Reports\\scan_results_{timestamp}.csv",
   "enableHistory": true,

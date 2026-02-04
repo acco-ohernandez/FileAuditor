@@ -24,6 +24,13 @@ namespace FileAuditor.Core.Models
         public string? Name { get; set; }
         public DateTime CreatedDate { get; set; } = DateTime.Now;
 
+        // CLI/Output settings (NEW)
+        public string OutputFormat { get; set; } = "csv"; // "csv" or "json"
+        public string OutputPath { get; set; } = "scan_results_{timestamp}.csv";
+        public bool EnableHistory { get; set; } = true;
+        public bool EnableComparison { get; set; } = false;
+        public int ComparisonRetentionDays { get; set; } = 90;
+
         public ScanConfiguration Clone()
         {
             return new ScanConfiguration
@@ -40,7 +47,12 @@ namespace FileAuditor.Core.Models
                 ExcludeFileTypes = new List<string>(ExcludeFileTypes),
                 EnableFileTypeBreakdown = EnableFileTypeBreakdown,
                 Name = Name,
-                CreatedDate = CreatedDate
+                CreatedDate = CreatedDate,
+                OutputFormat = OutputFormat,
+                OutputPath = OutputPath,
+                EnableHistory = EnableHistory,
+                EnableComparison = EnableComparison,
+                ComparisonRetentionDays = ComparisonRetentionDays
             };
         }
     }

@@ -1,7 +1,5 @@
-using System.CommandLine;
 using System.Text.Json;
 
-using FileAuditor.CLI.Models;
 using FileAuditor.Core.Enums;
 using FileAuditor.Core.Helpers;
 using FileAuditor.Core.Models;
@@ -15,9 +13,9 @@ namespace FileAuditor.CLI
 {
     class Program
     {
-
         static async Task<int> Main(string[] args)
         {
+            // Configure Serilog
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Information()
                 .WriteTo.Console()
@@ -31,47 +29,57 @@ namespace FileAuditor.CLI
 
             try
             {
-                var rootCommand = new RootCommand("File Auditor CLI - Scan file systems and generate reports");
-
-                // Argument (positional)
-                var configArgument = new Argument<FileInfo>("config")
+                // Simple argument parsing
+                if (args.Length == 0)
                 {
-                    Description = "Path to the JSON configuration file"
-                };
-                rootCommand.Arguments.Add(configArgument);
-
-                // Options (aliases come from constructor in 2.0.2)
-                var outputOption = new Option<string?>("--output", "-o")
-                {
-                    Description = "Override output file path"
-                };
-                rootCommand.Options.Add(outputOption);
-
-                var verboseOption = new Option<bool>("--verbose", "-v")
-                {
-                    Description = "Enable verbose logging"
-                };
-                rootCommand.Options.Add(verboseOption);
-
-                // Action/handler (2.0.2 uses SetAction + ParseResult)
-                rootCommand.SetAction(async (parseResult, cancellationToken) =>
-                {
-                    var config = parseResult.GetValue(configArgument);
-                    var output = parseResult.GetValue(outputOption);
-                    var verbose = parseResult.GetValue(verboseOption);
-
-                    if (config is null)
-                    {
-                        Console.Error.WriteLine("Missing required argument: config");
-                        return 1;
-                    }
-
-                    await RunScanAsync(config, output, verbose);
+                    ShowUsage();
                     return 0;
-                });
+                }
 
-                // Invoke (2.0.2 pattern)
-                return rootCommand.Parse(args).Invoke();
+                string? configPath = null;
+                string? outputPath = null;
+                bool verbose = false;
+
+                // Parse arguments
+                for (int i = 0; i < args.Length; i++)
+                {
+                    switch (args[i].ToLower())
+                    {
+                        case "--config":
+                        case "-c":
+                            if (i + 1 < args.Length)
+                                configPath = args[++i];
+                            break;
+                        case "--output":
+                        case "-o":
+                            if (i + 1 < args.Length)
+                                outputPath = args[++i];
+                            break;
+                        case "--verbose":
+                        case "-v":
+                            verbose = true;
+                            break;
+                        case "--help":
+                        case "-h":
+                        case "/?":
+                            ShowUsage();
+                            return 0;
+                        default:
+                            // Treat as config path if no option specified
+                            if (string.IsNullOrEmpty(configPath))
+                                configPath = args[i];
+                            break;
+                    }
+                }
+
+                if (string.IsNullOrEmpty(configPath))
+                {
+                    Log.Error("No configuration file specified");
+                    ShowUsage();
+                    return 1;
+                }
+
+                return await RunScanAsync(new FileInfo(configPath), outputPath, verbose);
             }
             catch (Exception ex)
             {
@@ -84,7 +92,29 @@ namespace FileAuditor.CLI
             }
         }
 
-        static async Task RunScanAsync(FileInfo configFile, string? outputPath, bool verbose)
+        static void ShowUsage()
+        {
+            Console.WriteLine("File Auditor CLI - Scan file systems and generate reports");
+            Console.WriteLine();
+            Console.WriteLine("Usage:");
+            Console.WriteLine("  FileAuditor.CLI [options] <config-file>");
+            Console.WriteLine();
+            Console.WriteLine("Arguments:");
+            Console.WriteLine("  <config-file>              Path to the JSON configuration file");
+            Console.WriteLine();
+            Console.WriteLine("Options:");
+            Console.WriteLine("  -c, --config <file>        Path to the JSON configuration file");
+            Console.WriteLine("  -o, --output <file>        Override output file path");
+            Console.WriteLine("  -v, --verbose              Enable verbose logging");
+            Console.WriteLine("  -h, --help                 Show help information");
+            Console.WriteLine();
+            Console.WriteLine("Examples:");
+            Console.WriteLine("  FileAuditor.CLI config.json");
+            Console.WriteLine("  FileAuditor.CLI --config config.json --verbose");
+            Console.WriteLine("  FileAuditor.CLI -c config.json -o custom-output.csv");
+        }
+
+        static async Task<int> RunScanAsync(FileInfo configFile, string? outputPath, bool verbose)
         {
             try
             {
@@ -109,11 +139,13 @@ namespace FileAuditor.CLI
                 if (!configFile.Exists)
                 {
                     Log.Error("Configuration file not found: {ConfigFile}", configFile.FullName);
-                    return;
+                    return 1;
                 }
 
                 var configJson = await File.ReadAllTextAsync(configFile.FullName);
-                var config = JsonSerializer.Deserialize<CliConfiguration>(configJson, new JsonSerializerOptions
+
+                // Deserialize to ScanConfiguration (same as WPF)
+                var config = JsonSerializer.Deserialize<ScanConfiguration>(configJson, new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
                 });
@@ -121,7 +153,7 @@ namespace FileAuditor.CLI
                 if (config == null)
                 {
                     Log.Error("Failed to parse configuration file");
-                    return;
+                    return 1;
                 }
 
                 Log.Information("Configuration loaded successfully");
@@ -139,7 +171,7 @@ namespace FileAuditor.CLI
                 var historyService = new ScanHistoryService(loggerFactory.CreateLogger<ScanHistoryService>());
 
                 // Validate paths
-                var pathItems = PathValidator.ValidateMultiplePaths(config.Paths);
+                var pathItems = PathValidator.ValidateMultiplePaths(config.Paths.Select(p => p.Path));
                 var invalidPaths = pathItems.Where(p => !p.IsValid).ToList();
 
                 if (invalidPaths.Any())
@@ -156,32 +188,11 @@ namespace FileAuditor.CLI
                 if (!pathItems.Any())
                 {
                     Log.Error("No valid paths to scan");
-                    return;
+                    return 1;
                 }
 
-                // Parse count mode
-                var countMode = config.CountMode.ToLower() switch
-                {
-                    "foldersonly" => CountMode.FoldersOnly,
-                    "filesonly" => CountMode.FilesOnly,
-                    _ => CountMode.Both
-                };
-
-                // Create scan configuration
-                var scanConfig = new ScanConfiguration
-                {
-                    Paths = pathItems,
-                    CountMode = countMode,
-                    IsRecursive = config.Recursive,
-                    MaxDepth = config.MaxDepth,
-                    ParallelThreadCount = config.ParallelThreads,
-                    IncludeHiddenFiles = config.IncludeHiddenFiles,
-                    BoxDriveRefreshEnabled = config.BoxDriveRefreshEnabled,
-                    BoxDriveRefreshTimeoutSeconds = config.BoxDriveRefreshTimeoutSeconds,
-                    EnableFileTypeBreakdown = config.EnableFileTypeBreakdown,
-                    IncludeFileTypes = config.IncludeFileTypes,
-                    ExcludeFileTypes = config.ExcludeFileTypes
-                };
+                // Update config with validated paths
+                config.Paths = pathItems;
 
                 // Execute scan
                 Log.Information("Starting scan of {Count} path(s)...", pathItems.Count);
@@ -196,7 +207,7 @@ namespace FileAuditor.CLI
 
                 var results = await fileScanner.ScanMultiplePathsAsync(
                     pathItems,
-                    scanConfig,
+                    config,
                     CancellationToken.None,
                     progress);
 
@@ -273,11 +284,12 @@ namespace FileAuditor.CLI
 
                 Log.Information("Export completed successfully");
                 Log.Information("File Auditor CLI completed successfully");
+                return 0;
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "An error occurred during scan execution");
-                throw;
+                return 1;
             }
         }
     }
