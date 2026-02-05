@@ -59,8 +59,33 @@
                 <MenuItem Header="_Save Current Configuration" Command="{Binding SaveConfigurationCommand}"/>
                 <MenuItem Header="_Load Configuration" Command="{Binding LoadConfigurationCommand}"/>
             </MenuItem>
-            <MenuItem Header="_Help">
-                <MenuItem Header="_About" Click="About_Click"/>
+            <MenuItem Header="Help">
+                <MenuItem Header="Help Contents" Click="HelpContents_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="📖" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Scan Help" Click="ScanHelp_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🔍" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Cleanup Help" Click="CleanupHelp_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🧹" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="CLI Usage" Click="CliHelp_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="⌨️" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="About" Click="About_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="ℹ️" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
         </Menu>
 

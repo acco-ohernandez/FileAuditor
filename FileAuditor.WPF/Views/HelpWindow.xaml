@@ -1,0 +1,723 @@
+<Window x:Class="FileAuditor.WPF.Views.HelpWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="File Auditor Help" 
+        Height="700" 
+        Width="900"
+        WindowStartupLocation="CenterScreen">
+    <!--Icon="/Resources/icon.ico">-->
+
+    <Window.Resources>
+        <Style x:Key="HelpSectionHeader" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="0,15,0,10"/>
+            <Setter Property="Foreground" Value="#2196F3"/>
+        </Style>
+
+        <Style x:Key="HelpSubHeader" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,10,0,5"/>
+        </Style>
+
+        <Style x:Key="HelpText" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,5"/>
+            <Setter Property="LineHeight" Value="22"/>
+        </Style>
+
+        <Style x:Key="CodeBlock" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="Background" Value="#F5F5F5"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style x:Key="TipBox" TargetType="Border">
+            <Setter Property="Background" Value="#E3F2FD"/>
+            <Setter Property="BorderBrush" Value="#2196F3"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Margin" Value="0,10"/>
+            <Setter Property="CornerRadius" Value="5"/>
+        </Style>
+
+        <Style x:Key="WarningBox" TargetType="Border">
+            <Setter Property="Background" Value="#FFF3E0"/>
+            <Setter Property="BorderBrush" Value="#FF9800"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Margin" Value="0,10"/>
+            <Setter Property="CornerRadius" Value="5"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TabControl Grid.Row="0" Margin="10" x:Name="HelpTabControl">
+            <!-- Getting Started Tab -->
+            <TabItem Header="Getting Started">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="20">
+                        <TextBlock Text="Welcome to File Auditor" Style="{StaticResource HelpSectionHeader}"/>
+
+                        <TextBlock Style="{StaticResource HelpText}">
+                            File Auditor is a comprehensive tool for scanning and managing files across local drives, 
+                            network shares, and Box Drive folders. It provides detailed reports on folder/file counts, 
+                            sizes, and file type distributions, plus powerful cleanup capabilities.
+                        </TextBlock>
+
+                        <TextBlock Text="Key Features" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            • <Bold>Scan:</Bold> Audit local, network, and Box Drive paths<LineBreak/>
+                            • <Bold>Cleanup:</Bold> Safely delete old files based on flexible date criteria<LineBreak/>
+                            • <Bold>Reports:</Bold> Export results to CSV or JSON<LineBreak/>
+                            • <Bold>History:</Bold> Track scans over time and compare changes<LineBreak/>
+                            • <Bold>CLI:</Bold> Automate tasks via command line and Task Scheduler<LineBreak/>
+                            • <Bold>Box Drive:</Bold> Automatic detection and offline file hydration
+                        </TextBlock>
+
+                        <TextBlock Text="Quick Start" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            <Bold>1. Scan Tab:</Bold><LineBreak/>
+                            • Enter paths (one per line) or use Browse button<LineBreak/>
+                            • Configure scan options (recursive, depth, file types)<LineBreak/>
+                            • Click "Start Scan" to begin<LineBreak/>
+                            • View results and export to CSV/JSON<LineBreak/>
+                            <LineBreak/>
+                            <Bold>2. Cleanup Tab:</Bold><LineBreak/>
+                            • Enter paths to clean<LineBreak/>
+                            • Set date criteria (e.g., older than 30 days)<LineBreak/>
+                            • Click "Analyze" to preview<LineBreak/>
+                            • Review results carefully<LineBreak/>
+                            • Click "Execute Cleanup" to delete (if not in dry-run mode)
+                        </TextBlock>
+
+                        <Border Style="{StaticResource TipBox}">
+                            <StackPanel>
+                                <TextBlock FontWeight="Bold" Margin="0,0,0,5">💡 Pro Tip</TextBlock>
+                                <TextBlock TextWrapping="Wrap">
+                                    Save your configurations! Both Scan and Cleanup tabs allow you to save 
+                                    settings for reuse. These configurations can also be used with the CLI 
+                                    for automation and scheduled tasks.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="Navigation" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            Use the tabs at the top to switch between help topics:<LineBreak/>
+                            • <Bold>Scan Help:</Bold> Detailed scanning instructions<LineBreak/>
+                            • <Bold>Cleanup Help:</Bold> Safe cleanup procedures<LineBreak/>
+                            • <Bold>CLI Usage:</Bold> Command-line automation<LineBreak/>
+                            • <Bold>Box Drive:</Bold> Box Drive integration details<LineBreak/>
+                            • <Bold>FAQ:</Bold> Common questions and troubleshooting
+                        </TextBlock>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Scan Help Tab -->
+            <TabItem Header="Scan Help">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="20">
+                        <TextBlock Text="File System Scanning" Style="{StaticResource HelpSectionHeader}"/>
+
+                        <TextBlock Text="Entering Paths" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            Enter one path per line in the "Paths to Scan" text box. Supported path types:
+                        </TextBlock>
+
+                        <TextBlock Style="{StaticResource CodeBlock}">
+C:\Users\YourName\Documents<LineBreak/>
+\\NetworkShare\SharedFolder<LineBreak/>
+C:\CORP BOX\Box\ProjectFiles
+                        </TextBlock>
+
+                        <TextBlock Style="{StaticResource HelpText}">
+                            • <Bold>Local drives:</Bold> C:\, D:\, etc.<LineBreak/>
+                            • <Bold>Network shares:</Bold> \\\\server\share<LineBreak/>
+                            • <Bold>Box Drive:</Bold> Automatically detected from registry
+                        </TextBlock>
+
+                        <TextBlock Text="Scan Options" Style="{StaticResource HelpSubHeader}"/>
+
+                        <TextBlock Style="{StaticResource HelpText}">
+                            <Bold>Count Mode:</Bold><LineBreak/>
+                            • <Bold>Both:</Bold> Count files and folders<LineBreak/>
+                            • <Bold>Files Only:</Bold> Count only files<LineBreak/>
+                            • <Bold>Folders Only:</Bold> Count only folders<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Recursive Scan:</Bold><LineBreak/>
+                            When enabled, scans all subdirectories. Use Max Depth to limit how deep to scan.<LineBreak/>
+                            • <Bold>Max Depth 1:</Bold> Only the specified folder<LineBreak/>
+                            • <Bold>Max Depth 2:</Bold> Folder + immediate subfolders<LineBreak/>
+                            • <Bold>Empty:</Bold> Unlimited depth<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Parallel Threads:</Bold><LineBreak/>
+                            Number of concurrent scanning threads (1-16). Higher = faster but more CPU/disk usage.<LineBreak/>
+                            Recommended: 4-8 for most systems.<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Include Hidden Files:</Bold><LineBreak/>
+                            Scan hidden and system files/folders.<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Enable File Type Breakdown:</Bold><LineBreak/>
+                            Track how many files of each type (.docx, .pdf, etc.) exist.
+                        </TextBlock>
+
+                        <TextBlock Text="Box Drive Options" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            <Bold>Enable Box Drive Refresh:</Bold><LineBreak/>
+                            Automatically hydrate (download) offline files before scanning. This ensures accurate 
+                            file counts and sizes for Box Drive folders.<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Timeout:</Bold> How long to wait for offline files to download (seconds).
+                        </TextBlock>
+
+                        <TextBlock Text="File Type Filters" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            <Bold>Include Types:</Bold> Only count these file types (e.g., .docx, .pdf)<LineBreak/>
+                            <Bold>Exclude Types:</Bold> Ignore these file types (e.g., .tmp, .log)<LineBreak/>
+                            <LineBreak/>
+                            Leave both empty to count all files.
+                        </TextBlock>
+
+                        <TextBlock Text="CLI / Output Settings" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            These settings control how results are exported and saved:<LineBreak/>
+                            • <Bold>Output Format:</Bold> CSV or JSON<LineBreak/>
+                            • <Bold>Output Path:</Bold> Where to save results (use {timestamp} for auto-naming)<LineBreak/>
+                            • <Bold>Enable Scan History:</Bold> Save results for future comparison<LineBreak/>
+                            • <Bold>Enable Comparison:</Bold> Track changes over time<LineBreak/>
+                            • <Bold>Retention Days:</Bold> Keep comparison history for X days
+                        </TextBlock>
+
+                        <Border Style="{StaticResource TipBox}">
+                            <StackPanel>
+                                <TextBlock FontWeight="Bold" Margin="0,0,0,5">💡 Performance Tips</TextBlock>
+                                <TextBlock TextWrapping="Wrap">
+                                    • For network shares, use fewer parallel threads (2-4)<LineBreak/>
+                                    • For local SSDs, use more threads (8-12)<LineBreak/>
+                                    • Use Max Depth to limit deep recursion on large directories<LineBreak/>
+                                    • Disable file type breakdown for faster scanning if not needed
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="Viewing Results" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            Results appear in the table on the right:<LineBreak/>
+                            • Click a row to see detailed error information (if any)<LineBreak/>
+                            • Export to CSV for analysis in Excel<LineBreak/>
+                            • Export to JSON for programmatic processing<LineBreak/>
+                            • Green status = success, Red status = errors
+                        </TextBlock>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Cleanup Help Tab -->
+            <TabItem Header="Cleanup Help">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="20">
+                        <TextBlock Text="Safe File Cleanup" Style="{StaticResource HelpSectionHeader}"/>
+
+                        <Border Style="{StaticResource WarningBox}">
+                            <StackPanel>
+                                <TextBlock FontWeight="Bold" Margin="0,0,0,5">⚠️ IMPORTANT SAFETY INFORMATION</TextBlock>
+                                <TextBlock TextWrapping="Wrap">
+                                    File deletion is permanent (unless using Recycle Bin)!<LineBreak/>
+                                    <Bold>ALWAYS</Bold> use Dry Run mode first to preview what will be deleted.<LineBreak/>
+                                    Review the analysis results carefully before executing cleanup.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="Cleanup Workflow" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            <Bold>Step 1: Configure</Bold><LineBreak/>
+                            • Enter paths to clean<LineBreak/>
+                            • Select what to clean (files, folders, or both)<LineBreak/>
+                            • Set date criteria<LineBreak/>
+                            • Configure file type filters if needed<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Step 2: Analyze (Preview)</Bold><LineBreak/>
+                            • Ensure "Dry Run" is checked<LineBreak/>
+                            • Click "Analyze"<LineBreak/>
+                            • Review the results carefully<LineBreak/>
+                            • Check file count, folder count, and total size<LineBreak/>
+                            • Expand results to see individual items<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Step 3: Execute (Optional)</Bold><LineBreak/>
+                            • If satisfied with preview, uncheck "Dry Run"<LineBreak/>
+                            • Click "Execute Cleanup"<LineBreak/>
+                            • Confirm when prompted<LineBreak/>
+                            • Monitor progress
+                        </TextBlock>
+
+                        <TextBlock Text="Date Criteria Modes" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            <Bold>Any Date:</Bold><LineBreak/>
+                            No date filtering. Useful when combined with file type filters.<LineBreak/>
+                            Example: Delete all .tmp files regardless of age.<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Older Than:</Bold><LineBreak/>
+                            Delete files/folders last modified more than X days ago.<LineBreak/>
+                            Example: Files older than 90 days.<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Newer Than:</Bold><LineBreak/>
+                            Delete files/folders last modified less than X days ago.<LineBreak/>
+                            Example: Recent temp files (newer than 1 day).<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Date Range:</Bold><LineBreak/>
+                            Delete files/folders modified within a specific date range.<LineBreak/>
+                            Example: All files from January 2025.<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Exact Date:</Bold><LineBreak/>
+                            Delete files/folders modified on a specific date.<LineBreak/>
+                            Example: Files from 2025-01-15.
+                        </TextBlock>
+
+                        <TextBlock Text="Time Precision" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            For Exact Date and Date Range modes, you can optionally include specific times:<LineBreak/>
+                            • Check "Include specific time(s)"<LineBreak/>
+                            • Select hour and minute<LineBreak/>
+                            • Useful for log files or timed backups
+                        </TextBlock>
+
+                        <TextBlock Text="Safety Options" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            <Bold>Dry Run:</Bold><LineBreak/>
+                            Preview mode - no files are deleted. <Bold>Always start here!</Bold><LineBreak/>
+                            <LineBreak/>
+                            <Bold>Require Confirmation:</Bold><LineBreak/>
+                            Shows a confirmation dialog before deletion with file/folder counts.<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Move to Recycle Bin:</Bold><LineBreak/>
+                            Deleted items go to Recycle Bin (can be recovered).<LineBreak/>
+                            Uncheck for permanent deletion (use with extreme caution).
+                        </TextBlock>
+
+                        <TextBlock Text="File Type Filters" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            <Bold>Include Types:</Bold> Only delete these file types<LineBreak/>
+                            Example: .tmp, .log, .bak<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Exclude Types:</Bold> Never delete these file types<LineBreak/>
+                            Example: .docx, .pdf, .xlsx (protect important documents)<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Exclude Patterns:</Bold> Regular expressions to exclude paths<LineBreak/>
+                            Example: .*important.*, .*backup.* (protect folders with these words)
+                        </TextBlock>
+
+                        <Border Style="{StaticResource TipBox}">
+                            <StackPanel>
+                                <TextBlock FontWeight="Bold" Margin="0,0,0,5">💡 Best Practices</TextBlock>
+                                <TextBlock TextWrapping="Wrap">
+                                    1. Always test with Dry Run first<LineBreak/>
+                                    2. Use Recycle Bin mode for first-time cleanups<LineBreak/>
+                                    3. Save configurations for repeated cleanup tasks<LineBreak/>
+                                    4. Export analysis results for record-keeping<LineBreak/>
+                                    5. Start with small test folders before cleaning large directories<LineBreak/>
+                                    6. Use file type filters to be more selective
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="Common Use Cases" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            <Bold>Temp File Cleanup:</Bold><LineBreak/>
+                            • Cleanup Target: Files Only<LineBreak/>
+                            • Date Mode: Any Date<LineBreak/>
+                            • Include Types: .tmp, .log, .cache<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Old Archive Cleanup:</Bold><LineBreak/>
+                            • Cleanup Target: Both<LineBreak/>
+                            • Date Mode: Older Than 365 days<LineBreak/>
+                            • Path: Archive folder<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Download Folder Management:</Bold><LineBreak/>
+                            • Cleanup Target: Files Only<LineBreak/>
+                            • Date Mode: Older Than 30 days<LineBreak/>
+                            • Path: Downloads folder<LineBreak/>
+                            • Exclude Types: .exe, .msi (keep installers)
+                        </TextBlock>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- CLI Usage Tab -->
+            <TabItem Header="CLI Usage">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="20">
+                        <TextBlock Text="Command-Line Interface" Style="{StaticResource HelpSectionHeader}"/>
+
+                        <TextBlock Text="Overview" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            The File Auditor CLI enables automation via command line and Windows Task Scheduler.
+                            It supports both scanning and cleanup operations using configuration files created
+                            in the WPF application.
+                        </TextBlock>
+
+                        <TextBlock Text="Installation Location" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource CodeBlock}">
+FileAuditor.CLI.exe is in the same folder as FileAuditor.WPF.exe
+                        </TextBlock>
+
+                        <TextBlock Text="Basic Commands" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource CodeBlock}">
+FileAuditor.CLI help                    Show general help<LineBreak/>
+FileAuditor.CLI help scan               Show scan command help<LineBreak/>
+FileAuditor.CLI help cleanup            Show cleanup command help<LineBreak/>
+FileAuditor.CLI version                 Show version info
+                        </TextBlock>
+
+                        <TextBlock Text="Scan Command" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource CodeBlock}">
+# Basic scan<LineBreak/>
+FileAuditor.CLI scan --config scan-config.json<LineBreak/>
+<LineBreak/>
+# With custom output<LineBreak/>
+FileAuditor.CLI scan -c config.json -o C:\Reports\results.csv<LineBreak/>
+<LineBreak/>
+# With verbose logging<LineBreak/>
+FileAuditor.CLI scan -c config.json --verbose
+                        </TextBlock>
+
+                        <TextBlock Text="Cleanup Command" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource CodeBlock}">
+# Dry run (preview) - ALWAYS START HERE<LineBreak/>
+FileAuditor.CLI cleanup --config cleanup.json --dry-run<LineBreak/>
+<LineBreak/>
+# Execute cleanup<LineBreak/>
+FileAuditor.CLI cleanup --config cleanup.json --execute<LineBreak/>
+<LineBreak/>
+# With verbose logging<LineBreak/>
+FileAuditor.CLI cleanup -c cleanup.json --execute --verbose
+                        </TextBlock>
+
+                        <TextBlock Text="Configuration Files" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            Configuration files are created and saved in the WPF application:<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Scan configurations:</Bold><LineBreak/>
+                            %LocalAppData%\FileAuditor\Configurations\<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Cleanup configurations:</Bold><LineBreak/>
+                            %LocalAppData%\FileAuditor\CleanupConfigurations\
+                        </TextBlock>
+
+                        <TextBlock Text="Windows Task Scheduler Setup" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            <Bold>Step 1: Create Configuration</Bold><LineBreak/>
+                            • Open File Auditor WPF<LineBreak/>
+                            • Configure scan or cleanup settings<LineBreak/>
+                            • Save configuration (e.g., "Weekly Scan")<LineBreak/>
+                            • Note the saved file location<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Step 2: Create Scheduled Task</Bold><LineBreak/>
+                            1. Open Task Scheduler (taskschd.msc)<LineBreak/>
+                            2. Create Basic Task<LineBreak/>
+                            3. Name: "File Auditor Weekly Scan"<LineBreak/>
+                            4. Trigger: Weekly, Sunday at 2:00 AM<LineBreak/>
+                            5. Action: Start a program<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Step 3: Configure Action</Bold>
+                        </TextBlock>
+
+                        <TextBlock Style="{StaticResource CodeBlock}">
+Program: C:\Path\To\FileAuditor.CLI.exe<LineBreak/>
+Arguments: scan --config "C:\Path\To\config.json"<LineBreak/>
+Start in: C:\Path\To\
+                        </TextBlock>
+
+                        <Border Style="{StaticResource TipBox}">
+                            <StackPanel>
+                                <TextBlock FontWeight="Bold" Margin="0,0,0,5">💡 Scheduler Tips</TextBlock>
+                                <TextBlock TextWrapping="Wrap">
+                                    • Use absolute paths for everything<LineBreak/>
+                                    • Run whether user is logged on or not<LineBreak/>
+                                    • Run with highest privileges for network access<LineBreak/>
+                                    • Set "Start in" to the CLI directory<LineBreak/>
+                                    • Test manually before scheduling
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="Log Files" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            CLI operations are logged to:<LineBreak/>
+                            %LocalAppData%\FileAuditor\Logs\cli-log-YYYYMMDD.txt<LineBreak/>
+                            <LineBreak/>
+                            Logs include:<LineBreak/>
+                            • Start/end times<LineBreak/>
+                            • Paths processed<LineBreak/>
+                            • Results summary<LineBreak/>
+                            • Errors and warnings<LineBreak/>
+                            • Files deleted (for cleanup operations)
+                        </TextBlock>
+
+                        <TextBlock Text="Example Scheduled Tasks" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            <Bold>Daily Temp Cleanup:</Bold><LineBreak/>
+                            Trigger: Daily at 6:00 AM<LineBreak/>
+                            Command: cleanup --config daily-temp.json --execute<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Weekly Archive Scan:</Bold><LineBreak/>
+                            Trigger: Weekly, Sunday at 1:00 AM<LineBreak/>
+                            Command: scan --config weekly-archive.json<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Monthly Box Drive Audit:</Bold><LineBreak/>
+                            Trigger: Monthly, 1st day at 3:00 AM<LineBreak/>
+                            Command: scan --config box-audit.json
+                        </TextBlock>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Box Drive Tab -->
+            <TabItem Header="Box Drive">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="20">
+                        <TextBlock Text="Box Drive Integration" Style="{StaticResource HelpSectionHeader}"/>
+
+                        <TextBlock Text="Automatic Detection" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            File Auditor automatically detects Box Drive installations by reading from the Windows registry:<LineBreak/>
+                            HKEY_CURRENT_USER\Software\Box\Box\preferences\sync_directory_path<LineBreak/>
+                            <LineBreak/>
+                            Common Box Drive paths:<LineBreak/>
+                            • C:\CORP BOX\Box<LineBreak/>
+                            • C:\Users\YourName\Box<LineBreak/>
+                            • B:\
+                        </TextBlock>
+
+                        <TextBlock Text="Offline File Handling" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            Box Drive stores files in three states:<LineBreak/>
+                            • <Bold>Local:</Bold> File is fully downloaded<LineBreak/>
+                            • <Bold>Online-Only:</Bold> File is in the cloud (placeholder on disk)<LineBreak/>
+                            • <Bold>Syncing:</Bold> File is being downloaded<LineBreak/>
+                            <LineBreak/>
+                            When "Enable Box Drive refresh" is checked, File Auditor will:<LineBreak/>
+                            1. Detect online-only files<LineBreak/>
+                            2. Trigger download (hydration)<LineBreak/>
+                            3. Wait for download to complete (up to timeout)<LineBreak/>
+                            4. Count the actual file
+                        </TextBlock>
+
+                        <TextBlock Text="Box Drive Refresh Settings" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            <Bold>Enable Box Drive Refresh:</Bold><LineBreak/>
+                            When enabled, ensures accurate counts by downloading offline files.<LineBreak/>
+                            Disable if you want to count placeholders as files (faster but less accurate).<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Timeout (seconds):</Bold><LineBreak/>
+                            How long to wait for each offline file to download.<LineBreak/>
+                            • 10 seconds: Small files on fast connections<LineBreak/>
+                            • 30 seconds: Medium files or slower connections (recommended)<LineBreak/>
+                            • 60+ seconds: Large files or very slow connections
+                        </TextBlock>
+
+                        <Border Style="{StaticResource TipBox}">
+                            <StackPanel>
+                                <TextBlock FontWeight="Bold" Margin="0,0,0,5">💡 Performance Considerations</TextBlock>
+                                <TextBlock TextWrapping="Wrap">
+                                    Refreshing offline files can be slow if you have many large files.<LineBreak/>
+                                    For faster scans of Box Drive folders:<LineBreak/>
+                                    • Disable Box Drive refresh<LineBreak/>
+                                    • Use file type filters to exclude large files<LineBreak/>
+                                    • Limit max depth<LineBreak/>
+                                    • Scan during off-peak hours
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="Network Requirements" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            Box Drive refresh requires:<LineBreak/>
+                            • Active internet connection<LineBreak/>
+                            • Box Drive desktop app running<LineBreak/>
+                            • Sufficient Box storage quota<LineBreak/>
+                            • Network bandwidth for downloads
+                        </TextBlock>
+
+                        <TextBlock Text="Troubleshooting" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            <Bold>Box Drive not detected:</Bold><LineBreak/>
+                            • Ensure Box Drive is installed<LineBreak/>
+                            • Check that Box Drive is running<LineBreak/>
+                            • Verify sync directory in Box Drive settings<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Refresh timeout errors:</Bold><LineBreak/>
+                            • Increase timeout value<LineBreak/>
+                            • Check internet connection<LineBreak/>
+                            • Verify Box Drive is syncing<LineBreak/>
+                            • Try scanning a smaller folder first<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Inaccurate counts:</Bold><LineBreak/>
+                            • Enable Box Drive refresh<LineBreak/>
+                            • Increase timeout<LineBreak/>
+                            • Manually sync folder in Box Drive first
+                        </TextBlock>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- FAQ Tab -->
+            <TabItem Header="FAQ">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="20">
+                        <TextBlock Text="Frequently Asked Questions" Style="{StaticResource HelpSectionHeader}"/>
+
+                        <TextBlock Text="General Questions" Style="{StaticResource HelpSubHeader}"/>
+
+                        <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: Where are my scan results and configurations saved?</TextBlock>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            A: All data is stored in %LocalAppData%\FileAuditor\:<LineBreak/>
+                            • Scan history: History\<LineBreak/>
+                            • Scan configs: Configurations\<LineBreak/>
+                            • Cleanup configs: CleanupConfigurations\<LineBreak/>
+                            • Logs: Logs\
+                        </TextBlock>
+
+                        <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: Can I scan network drives?</TextBlock>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            A: Yes! Use UNC paths like \\server\share\folder. Make sure you have read permissions.
+                        </TextBlock>
+
+                        <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: How do I automate scans/cleanup?</TextBlock>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            A: Use the CLI with Windows Task Scheduler. See the "CLI Usage" tab for details.
+                        </TextBlock>
+
+                        <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: What's the difference between CSV and JSON export?</TextBlock>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            A: CSV is best for Excel/spreadsheet analysis. JSON is best for programmatic processing.
+                        </TextBlock>
+
+                        <TextBlock Text="Scanning Questions" Style="{StaticResource HelpSubHeader}"/>
+
+                        <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: Why is my scan slow?</TextBlock>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            A: Several factors affect speed:<LineBreak/>
+                            • Network paths are slower than local<LineBreak/>
+                            • Box Drive refresh adds download time<LineBreak/>
+                            • Deep recursion scans many folders<LineBreak/>
+                            • File type breakdown adds processing<LineBreak/>
+                            <LineBreak/>
+                            To speed up: Increase parallel threads, disable Box Drive refresh, limit max depth.
+                        </TextBlock>
+
+                        <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: What does "Access Denied" mean?</TextBlock>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            A: You don't have permission to read that folder/file. The scan will continue and skip 
+                            that item. Run as administrator if you need access to system folders.
+                        </TextBlock>
+
+                        <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: Can I compare scans over time?</TextBlock>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            A: Yes! Enable "Enable comparison tracking" in CLI/Output Settings. The system will 
+                            save scan history and allow comparison of changes over time.
+                        </TextBlock>
+
+                        <TextBlock Text="Cleanup Questions" Style="{StaticResource HelpSubHeader}"/>
+
+                        <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: Is cleanup safe?</TextBlock>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            A: Yes, with proper precautions:<LineBreak/>
+                            • Always test with Dry Run first<LineBreak/>
+                            • Use Recycle Bin mode (can undo)<LineBreak/>
+                            • Review analysis results carefully<LineBreak/>
+                            • Test on small folders first<LineBreak/>
+                            • Keep backups of important data
+                        </TextBlock>
+
+                        <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: Can I undo a cleanup?</TextBlock>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            A: If "Move to Recycle Bin" was enabled, yes - restore from Recycle Bin.<LineBreak/>
+                            If permanent delete was used, files cannot be recovered without backups.
+                        </TextBlock>
+
+                        <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: What happens if cleanup is cancelled?</TextBlock>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            A: Files deleted before cancellation are gone (unless in Recycle Bin). 
+                            Remaining files are not deleted.
+                        </TextBlock>
+
+                        <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: Can I clean Box Drive folders?</TextBlock>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            A: Yes, but be careful! Deleted files are removed from Box permanently 
+                            (not just your local machine). Test with Dry Run and use Recycle Bin mode.
+                        </TextBlock>
+
+                        <TextBlock Text="Troubleshooting" Style="{StaticResource HelpSubHeader}"/>
+
+                        <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: The application won't start</TextBlock>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            A: Check requirements:<LineBreak/>
+                            • .NET 8 Runtime installed<LineBreak/>
+                            • Windows 10/11<LineBreak/>
+                            • Check logs in %LocalAppData%\FileAuditor\Logs\
+                        </TextBlock>
+
+                        <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: I get "Path not found" errors</TextBlock>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            A: Verify:<LineBreak/>
+                            • Path exists and is typed correctly<LineBreak/>
+                            • Network drives are connected<LineBreak/>
+                            • You have access permissions<LineBreak/>
+                            • Box Drive is running (for Box paths)
+                        </TextBlock>
+
+                        <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: Where can I get support?</TextBlock>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            A: Check log files in %LocalAppData%\FileAuditor\Logs\ for error details.<LineBreak/>
+                            For bugs or feature requests, contact your IT department.
+                        </TextBlock>
+
+                        <Border Style="{StaticResource TipBox}">
+                            <StackPanel>
+                                <TextBlock FontWeight="Bold" Margin="0,0,0,5">💡 Still Need Help?</TextBlock>
+                                <TextBlock TextWrapping="Wrap">
+                                    Check the other help tabs for detailed information on specific features.<LineBreak/>
+                                    Log files often contain helpful error messages and stack traces.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <!-- Footer -->
+        <Border Grid.Row="1" Background="#F5F5F5" BorderBrush="#CCCCCC" BorderThickness="0,1,0,0" Padding="10">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Close" 
+                        Click="CloseButton_Click"
+                        MinWidth="100" 
+                        Padding="10,5"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
+
+<!--<Window x:Class="FileAuditor.WPF.Views.HelpWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:FileAuditor.WPF.Views"
+        mc:Ignorable="d"
+        Title="HelpWindow" Height="450" Width="800">
+    <Grid>
+        
+    </Grid>
+</Window>-->
