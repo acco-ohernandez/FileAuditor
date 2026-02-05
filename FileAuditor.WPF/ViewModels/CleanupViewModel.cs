@@ -127,7 +127,7 @@ namespace FileAuditor.WPF.ViewModels
             _historyService = historyService; // ADD THIS
             _logger = logger;
 
-            LoadSavedConfigurations(); // ADD THIS
+            _ = LoadSavedConfigurations(); // Fire and forget - safe for UI initialization
         }
 
         [RelayCommand]

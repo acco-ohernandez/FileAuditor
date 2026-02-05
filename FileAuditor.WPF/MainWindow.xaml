@@ -15,6 +15,8 @@
         <converters:BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
         <converters:ScanStatusToColorConverter x:Key="StatusToColorConverter"/>
         <converters:BytesToSizeConverter x:Key="BytesToSizeConverter"/>
+        <converters:DateModeToVisibilityConverter x:Key="DateModeToVisConverter"/>
+
 
         <!-- Styles -->
         <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
@@ -510,36 +512,218 @@
                             <!-- Date Criteria -->
                             <Expander Header="Date Criteria" IsExpanded="True" Style="{StaticResource ExpanderStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="Date Mode:" Margin="0,0,0,5"/>
-                                    <ComboBox ItemsSource="{Binding CleanupViewModel.DateModes, RelativeSource={RelativeSource AncestorType=Window}}"
-                                  SelectedItem="{Binding CleanupViewModel.SelectedDateMode, RelativeSource={RelativeSource AncestorType=Window}}"
-                                  Margin="0,0,0,10"/>
+                                    <TextBlock Text="Date Mode:" Margin="0,0,0,5" FontWeight="SemiBold"/>
+                                    <ComboBox ItemsSource="{Binding DateModes}"
+                  SelectedItem="{Binding SelectedDateMode}"
+                  Margin="0,0,0,10"/>
 
-                                    <!-- Days Old (for OlderThan/NewerThan) -->
-                                    <StackPanel Visibility="{Binding CleanupViewModel.SelectedDateMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisConverter}}">
+                                    <!-- Help Text -->
+                                    <TextBlock TextWrapping="Wrap" FontSize="10" Foreground="Gray" Margin="0,0,0,10">
+            <Run Text="Select how to filter files/folders by date."/>
+                                    </TextBlock>
+
+                                    <!-- Any Date (no date filtering) -->
+                                    <StackPanel Visibility="{Binding SelectedDateMode, Converter={StaticResource DateModeToVisConverter}, ConverterParameter=AnyDate}">
+                                        <TextBlock Text="No date filtering will be applied." 
+                       FontStyle="Italic" 
+                       Foreground="Green" 
+                       Margin="0,5"/>
+                                    </StackPanel>
+
+                                    <!-- Older Than / Newer Than -->
+                                    <StackPanel Visibility="{Binding SelectedDateMode, Converter={StaticResource DateModeToVisConverter}, ConverterParameter='OlderThan,NewerThan'}">
                                         <StackPanel Orientation="Horizontal" Margin="0,5">
-                                            <TextBlock Text="Days:" VerticalAlignment="Center" Width="100"/>
-                                            <TextBox Text="{Binding CleanupViewModel.DaysOld, UpdateSourceTrigger=PropertyChanged, RelativeSource={RelativeSource AncestorType=Window}}"
-                                         Width="100"/>
+                                            <TextBlock Text="Days:" VerticalAlignment="Center" Width="80"/>
+                                            <TextBox Text="{Binding DaysOld, UpdateSourceTrigger=PropertyChanged}"
+                         Width="100"/>
+                                            <TextBlock VerticalAlignment="Center" 
+                           Margin="10,0,0,0"
+                           FontSize="10"
+                           Foreground="Gray">
+                    <Run Text="(Items "/>
+                    <Run Text="{Binding SelectedDateMode, Mode=OneWay}"/>
+                    <Run Text=" "/>
+                    <Run Text="{Binding DaysOld, Mode=OneWay}"/>
+                    <Run Text=" days)"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- Exact Date -->
+                                    <StackPanel Visibility="{Binding SelectedDateMode, Converter={StaticResource DateModeToVisConverter}, ConverterParameter=ExactDate}">
+                                        <TextBlock Text="Select the exact date:" Margin="0,5,0,5" FontSize="11"/>
+
+                                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                                            <TextBlock Text="Date:" VerticalAlignment="Center" Width="80"/>
+                                            <DatePicker SelectedDate="{Binding StartDate}"
+                           Width="150"/>
+                                        </StackPanel>
+
+                                        <!-- Time option for exact date -->
+                                        <CheckBox Content="Include specific time"
+                      IsChecked="{Binding IncludeTime}"
+                      Margin="0,10,0,5"/>
+
+                                        <StackPanel Orientation="Horizontal" 
+                       Margin="0,5"
+                       IsEnabled="{Binding IncludeTime}">
+                                            <TextBlock Text="Time:" VerticalAlignment="Center" Width="80"/>
+                                            <ComboBox Width="70" SelectedIndex="0" x:Name="ExactHourCombo">
+                                                <ComboBoxItem>00</ComboBoxItem>
+                                                <ComboBoxItem>01</ComboBoxItem>
+                                                <ComboBoxItem>02</ComboBoxItem>
+                                                <ComboBoxItem>03</ComboBoxItem>
+                                                <ComboBoxItem>04</ComboBoxItem>
+                                                <ComboBoxItem>05</ComboBoxItem>
+                                                <ComboBoxItem>06</ComboBoxItem>
+                                                <ComboBoxItem>07</ComboBoxItem>
+                                                <ComboBoxItem>08</ComboBoxItem>
+                                                <ComboBoxItem>09</ComboBoxItem>
+                                                <ComboBoxItem>10</ComboBoxItem>
+                                                <ComboBoxItem>11</ComboBoxItem>
+                                                <ComboBoxItem>12</ComboBoxItem>
+                                                <ComboBoxItem>13</ComboBoxItem>
+                                                <ComboBoxItem>14</ComboBoxItem>
+                                                <ComboBoxItem>15</ComboBoxItem>
+                                                <ComboBoxItem>16</ComboBoxItem>
+                                                <ComboBoxItem>17</ComboBoxItem>
+                                                <ComboBoxItem>18</ComboBoxItem>
+                                                <ComboBoxItem>19</ComboBoxItem>
+                                                <ComboBoxItem>20</ComboBoxItem>
+                                                <ComboBoxItem>21</ComboBoxItem>
+                                                <ComboBoxItem>22</ComboBoxItem>
+                                                <ComboBoxItem>23</ComboBoxItem>
+                                            </ComboBox>
+                                            <TextBlock Text=":" VerticalAlignment="Center" Margin="5,0"/>
+                                            <ComboBox Width="70" SelectedIndex="0" x:Name="ExactMinuteCombo">
+                                                <ComboBoxItem>00</ComboBoxItem>
+                                                <ComboBoxItem>15</ComboBoxItem>
+                                                <ComboBoxItem>30</ComboBoxItem>
+                                                <ComboBoxItem>45</ComboBoxItem>
+                                            </ComboBox>
+                                            <TextBlock Text="(24-hour format)" 
+                          VerticalAlignment="Center" 
+                          Margin="10,0,0,0"
+                          FontSize="10"
+                          Foreground="Gray"/>
                                         </StackPanel>
                                     </StackPanel>
 
                                     <!-- Date Range -->
-                                    <StackPanel Margin="0,5">
+                                    <StackPanel Visibility="{Binding SelectedDateMode, Converter={StaticResource DateModeToVisConverter}, ConverterParameter=DateRange}">
+                                        <TextBlock Text="Select date range:" Margin="0,5,0,5" FontSize="11"/>
+
                                         <StackPanel Orientation="Horizontal" Margin="0,5">
-                                            <TextBlock Text="Start Date:" VerticalAlignment="Center" Width="100"/>
-                                            <DatePicker SelectedDate="{Binding CleanupViewModel.StartDate, RelativeSource={RelativeSource AncestorType=Window}}"
-                                           Width="150"/>
+                                            <TextBlock Text="Start Date:" VerticalAlignment="Center" Width="80"/>
+                                            <DatePicker SelectedDate="{Binding StartDate}"
+                           Width="150"/>
                                         </StackPanel>
 
                                         <StackPanel Orientation="Horizontal" Margin="0,5">
-                                            <TextBlock Text="End Date:" VerticalAlignment="Center" Width="100"/>
-                                            <DatePicker SelectedDate="{Binding CleanupViewModel.EndDate, RelativeSource={RelativeSource AncestorType=Window}}"
-                                           Width="150"/>
+                                            <TextBlock Text="End Date:" VerticalAlignment="Center" Width="80"/>
+                                            <DatePicker SelectedDate="{Binding EndDate}"
+                           Width="150"/>
+                                        </StackPanel>
+
+                                        <!-- Time options for date range -->
+                                        <CheckBox Content="Include specific times"
+                      IsChecked="{Binding IncludeTime}"
+                      Margin="0,10,0,5"/>
+
+                                        <!-- Start Time -->
+                                        <StackPanel Orientation="Horizontal" 
+                       Margin="0,5"
+                       IsEnabled="{Binding IncludeTime}">
+                                            <TextBlock Text="Start Time:" VerticalAlignment="Center" Width="80"/>
+                                            <ComboBox Width="70" SelectedIndex="0" x:Name="StartHourCombo">
+                                                <ComboBoxItem>00</ComboBoxItem>
+                                                <ComboBoxItem>01</ComboBoxItem>
+                                                <ComboBoxItem>02</ComboBoxItem>
+                                                <ComboBoxItem>03</ComboBoxItem>
+                                                <ComboBoxItem>04</ComboBoxItem>
+                                                <ComboBoxItem>05</ComboBoxItem>
+                                                <ComboBoxItem>06</ComboBoxItem>
+                                                <ComboBoxItem>07</ComboBoxItem>
+                                                <ComboBoxItem>08</ComboBoxItem>
+                                                <ComboBoxItem>09</ComboBoxItem>
+                                                <ComboBoxItem>10</ComboBoxItem>
+                                                <ComboBoxItem>11</ComboBoxItem>
+                                                <ComboBoxItem>12</ComboBoxItem>
+                                                <ComboBoxItem>13</ComboBoxItem>
+                                                <ComboBoxItem>14</ComboBoxItem>
+                                                <ComboBoxItem>15</ComboBoxItem>
+                                                <ComboBoxItem>16</ComboBoxItem>
+                                                <ComboBoxItem>17</ComboBoxItem>
+                                                <ComboBoxItem>18</ComboBoxItem>
+                                                <ComboBoxItem>19</ComboBoxItem>
+                                                <ComboBoxItem>20</ComboBoxItem>
+                                                <ComboBoxItem>21</ComboBoxItem>
+                                                <ComboBoxItem>22</ComboBoxItem>
+                                                <ComboBoxItem>23</ComboBoxItem>
+                                            </ComboBox>
+                                            <TextBlock Text=":" VerticalAlignment="Center" Margin="5,0"/>
+                                            <ComboBox Width="70" SelectedIndex="0" x:Name="StartMinuteCombo">
+                                                <ComboBoxItem>00</ComboBoxItem>
+                                                <ComboBoxItem>15</ComboBoxItem>
+                                                <ComboBoxItem>30</ComboBoxItem>
+                                                <ComboBoxItem>45</ComboBoxItem>
+                                            </ComboBox>
+                                        </StackPanel>
+
+                                        <!-- End Time -->
+                                        <StackPanel Orientation="Horizontal" 
+                       Margin="0,5"
+                       IsEnabled="{Binding IncludeTime}">
+                                            <TextBlock Text="End Time:" VerticalAlignment="Center" Width="80"/>
+                                            <ComboBox Width="70" SelectedIndex="23" x:Name="EndHourCombo">
+                                                <ComboBoxItem>00</ComboBoxItem>
+                                                <ComboBoxItem>01</ComboBoxItem>
+                                                <ComboBoxItem>02</ComboBoxItem>
+                                                <ComboBoxItem>03</ComboBoxItem>
+                                                <ComboBoxItem>04</ComboBoxItem>
+                                                <ComboBoxItem>05</ComboBoxItem>
+                                                <ComboBoxItem>06</ComboBoxItem>
+                                                <ComboBoxItem>07</ComboBoxItem>
+                                                <ComboBoxItem>08</ComboBoxItem>
+                                                <ComboBoxItem>09</ComboBoxItem>
+                                                <ComboBoxItem>10</ComboBoxItem>
+                                                <ComboBoxItem>11</ComboBoxItem>
+                                                <ComboBoxItem>12</ComboBoxItem>
+                                                <ComboBoxItem>13</ComboBoxItem>
+                                                <ComboBoxItem>14</ComboBoxItem>
+                                                <ComboBoxItem>15</ComboBoxItem>
+                                                <ComboBoxItem>16</ComboBoxItem>
+                                                <ComboBoxItem>17</ComboBoxItem>
+                                                <ComboBoxItem>18</ComboBoxItem>
+                                                <ComboBoxItem>19</ComboBoxItem>
+                                                <ComboBoxItem>20</ComboBoxItem>
+                                                <ComboBoxItem>21</ComboBoxItem>
+                                                <ComboBoxItem>22</ComboBoxItem>
+                                                <ComboBoxItem>23</ComboBoxItem>
+                                            </ComboBox>
+                                            <TextBlock Text=":" VerticalAlignment="Center" Margin="5,0"/>
+                                            <ComboBox Width="70" SelectedIndex="3" x:Name="EndMinuteCombo">
+                                                <ComboBoxItem>00</ComboBoxItem>
+                                                <ComboBoxItem>15</ComboBoxItem>
+                                                <ComboBoxItem>30</ComboBoxItem>
+                                                <ComboBoxItem>45</ComboBoxItem>
+                                            </ComboBox>
                                         </StackPanel>
                                     </StackPanel>
+
+                                    <!-- Date filtering summary -->
+                                    <Border Background="#F0F0F0" 
+                Padding="10" 
+                Margin="0,10,0,0"
+                CornerRadius="3">
+                                        <TextBlock TextWrapping="Wrap" FontSize="10">
+                <Run Text="💡 Tip: " FontWeight="Bold"/>
+                <Run Text="Use 'AnyDate' to clean files regardless of date. Use 'OlderThan' for cleanup tasks like removing files older than 30 days."/>
+                                        </TextBlock>
+                                    </Border>
                                 </StackPanel>
                             </Expander>
+
 
                             <!-- File Type Filters -->
                             <Expander Header="File Type Filters" IsExpanded="False" Style="{StaticResource ExpanderStyle}">
@@ -590,6 +774,33 @@
                                   Margin="0,5"/>
                                 </StackPanel>
                             </Expander>
+
+
+                            <!-- Saved Configurations -->
+                            <Expander Header="Saved Configurations" IsExpanded="False" Style="{StaticResource ExpanderStyle}">
+                                <StackPanel>
+                                    <ComboBox ItemsSource="{Binding SavedConfigurations}"
+                  SelectedItem="{Binding SelectedConfiguration}"
+                  DisplayMemberPath="Name"
+                  Margin="0,0,0,5"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="Load" 
+                    Command="{Binding LoadConfigurationCommand}"
+                    Style="{StaticResource ButtonStyle}"
+                    IsEnabled="{Binding SelectedConfiguration, Converter={StaticResource BoolToVisConverter}}"/>
+                                        <Button Content="Save Current" 
+                    Command="{Binding SaveConfigurationCommand}"
+                    Style="{StaticResource ButtonStyle}"/>
+                                    </StackPanel>
+
+                                    <TextBlock Text="💾 Configurations can be used with CLI for scheduled tasks" 
+                   TextWrapping="Wrap"
+                   FontSize="10"
+                   Foreground="Gray"
+                   Margin="0,10,0,0"/>
+                                </StackPanel>
+                            </Expander>
+
 
                             <!-- Action Buttons -->
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">

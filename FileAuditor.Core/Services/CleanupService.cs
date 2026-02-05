@@ -283,9 +283,30 @@ namespace FileAuditor.Core.Services
             }
         }
 
+
         private bool MatchesDateCriteria(DateTime lastModified, CleanupConfiguration config)
         {
+            // AnyDate mode - no filtering
+            if (config.DateMode == CleanupDateMode.AnyDate)
+                return true;
+
             var now = DateTime.Now;
+
+            // Apply time component if enabled
+            DateTime effectiveStartDate = config.StartDate ?? now;
+            DateTime effectiveEndDate = config.EndDate ?? now;
+
+            if (config.IncludeTime)
+            {
+                if (config.StartTime.HasValue)
+                {
+                    effectiveStartDate = effectiveStartDate.Date.Add(config.StartTime.Value);
+                }
+                if (config.EndTime.HasValue)
+                {
+                    effectiveEndDate = effectiveEndDate.Date.Add(config.EndTime.Value);
+                }
+            }
 
             switch (config.DateMode)
             {
@@ -298,17 +319,38 @@ namespace FileAuditor.Core.Services
                 case CleanupDateMode.DateRange:
                     if (!config.StartDate.HasValue || !config.EndDate.HasValue)
                         return false;
-                    return lastModified >= config.StartDate.Value && lastModified <= config.EndDate.Value;
+
+                    if (config.IncludeTime)
+                    {
+                        return lastModified >= effectiveStartDate && lastModified <= effectiveEndDate;
+                    }
+                    else
+                    {
+                        return lastModified.Date >= effectiveStartDate.Date &&
+                               lastModified.Date <= effectiveEndDate.Date;
+                    }
 
                 case CleanupDateMode.ExactDate:
                     if (!config.StartDate.HasValue)
                         return false;
-                    return lastModified.Date == config.StartDate.Value.Date;
+
+                    if (config.IncludeTime)
+                    {
+                        // Match exact date and time (within same hour/minute)
+                        return lastModified.Date == effectiveStartDate.Date &&
+                               lastModified.Hour == effectiveStartDate.Hour &&
+                               lastModified.Minute == effectiveStartDate.Minute;
+                    }
+                    else
+                    {
+                        return lastModified.Date == effectiveStartDate.Date;
+                    }
 
                 default:
                     return false;
             }
         }
+
 
         private void DeleteItems(
             CleanupResult result,
