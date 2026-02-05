@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using FileAuditor.Core.Enums;
+using FileAuditor.Core.Helpers;
 using FileAuditor.Core.Models;
 using FileAuditor.Core.Services;
 
@@ -83,6 +84,22 @@ namespace FileAuditor.WPF.ViewModels
         [ObservableProperty]
         private CleanupResult? _selectedResult;
 
+
+        [ObservableProperty]
+        private bool _includeTime = false;
+
+        [ObservableProperty]
+        private TimeSpan _startTime = new TimeSpan(0, 0, 0);
+
+        [ObservableProperty]
+        private TimeSpan _endTime = new TimeSpan(23, 59, 59);
+
+        [ObservableProperty]
+        private ObservableCollection<CleanupConfiguration> _savedConfigurations = new();
+
+        [ObservableProperty]
+        private CleanupConfiguration? _selectedConfiguration;
+
         public ObservableCollection<CleanupTarget> CleanupTargets { get; } = new()
         {
             CleanupTarget.FilesOnly,
@@ -98,10 +115,19 @@ namespace FileAuditor.WPF.ViewModels
             CleanupDateMode.ExactDate
         };
 
-        public CleanupViewModel(ICleanupService cleanupService, ILogger<CleanupViewModel> logger)
+        // Add to constructor injection
+        private readonly IScanHistoryService _historyService;
+
+        public CleanupViewModel(
+            ICleanupService cleanupService,
+            IScanHistoryService historyService, // ADD THIS
+            ILogger<CleanupViewModel> logger)
         {
             _cleanupService = cleanupService;
+            _historyService = historyService; // ADD THIS
             _logger = logger;
+
+            LoadSavedConfigurations(); // ADD THIS
         }
 
         [RelayCommand]
@@ -352,19 +378,117 @@ namespace FileAuditor.WPF.ViewModels
             }
         }
 
+
+        // Add these new commands
+        [RelayCommand]
+        private async Task SaveConfiguration()
+        {
+            var configName = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter a name for this cleanup configuration:",
+                "Save Cleanup Configuration",
+                $"CleanupConfig_{DateTime.Now:yyyyMMdd}");
+
+            if (string.IsNullOrWhiteSpace(configName))
+                return;
+
+            try
+            {
+                var pathItems = PathValidator.ParsePathsFromText(PathsText);
+
+                var config = new CleanupConfiguration
+                {
+                    Name = configName,
+                    TargetPaths = pathItems,
+                    Target = SelectedTarget,
+                    DateMode = SelectedDateMode,
+                    DaysOld = DaysOld,
+                    StartDate = StartDate,
+                    EndDate = EndDate,
+                    IncludeTime = IncludeTime,
+                    StartTime = StartTime,
+                    EndTime = EndTime,
+                    IsRecursive = IsRecursive,
+                    MaxDepth = MaxDepth,
+                    IncludeHiddenFiles = IncludeHiddenFiles,
+                    DryRun = DryRun,
+                    RequireConfirmation = RequireConfirmation,
+                    MoveToRecycleBin = MoveToRecycleBin,
+                    IncludeFileTypes = ParseList(IncludeFileTypes),
+                    ExcludeFileTypes = ParseList(ExcludeFileTypes),
+                    ExcludePatterns = ParseList(ExcludePatterns)
+                };
+
+                await _historyService.SaveCleanupConfigurationAsync(config);
+                await LoadSavedConfigurations();
+                StatusMessage = $"Configuration '{configName}' saved";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error saving configuration:\n\n{ex.Message}",
+                    "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        [RelayCommand]
+        private async Task LoadConfiguration()
+        {
+            if (SelectedConfiguration == null)
+                return;
+
+            PathsText = string.Join(Environment.NewLine, SelectedConfiguration.TargetPaths.Select(p => p.Path));
+            SelectedTarget = SelectedConfiguration.Target;
+            SelectedDateMode = SelectedConfiguration.DateMode;
+            DaysOld = SelectedConfiguration.DaysOld;
+            StartDate = SelectedConfiguration.StartDate;
+            EndDate = SelectedConfiguration.EndDate;
+            IncludeTime = SelectedConfiguration.IncludeTime;
+            StartTime = SelectedConfiguration.StartTime ?? new TimeSpan(0, 0, 0);
+            EndTime = SelectedConfiguration.EndTime ?? new TimeSpan(23, 59, 59);
+            IsRecursive = SelectedConfiguration.IsRecursive;
+            MaxDepth = SelectedConfiguration.MaxDepth;
+            IncludeHiddenFiles = SelectedConfiguration.IncludeHiddenFiles;
+            DryRun = SelectedConfiguration.DryRun;
+            RequireConfirmation = SelectedConfiguration.RequireConfirmation;
+            MoveToRecycleBin = SelectedConfiguration.MoveToRecycleBin;
+            IncludeFileTypes = string.Join(", ", SelectedConfiguration.IncludeFileTypes);
+            ExcludeFileTypes = string.Join(", ", SelectedConfiguration.ExcludeFileTypes);
+            ExcludePatterns = string.Join("\n", SelectedConfiguration.ExcludePatterns);
+
+            StatusMessage = $"Loaded configuration '{SelectedConfiguration.Name}'";
+            await Task.CompletedTask;
+        }
+
+        private async Task LoadSavedConfigurations()
+        {
+            try
+            {
+                var configs = await _historyService.GetSavedCleanupConfigurationsAsync();
+                SavedConfigurations.Clear();
+                foreach (var config in configs)
+                {
+                    SavedConfigurations.Add(config);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading saved cleanup configurations");
+            }
+        }
+
+        // Update CreateConfiguration to include new properties
         private CleanupConfiguration CreateConfiguration()
         {
-            return new CleanupConfiguration
+            var config = new CleanupConfiguration
             {
-                TargetPaths = PathsText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(p => p.Trim())
-                    .Where(p => !string.IsNullOrWhiteSpace(p))
-                    .ToList(),
+                TargetPaths = PathValidator.ParsePathsFromText(PathsText),
                 Target = SelectedTarget,
                 DateMode = SelectedDateMode,
                 DaysOld = DaysOld,
                 StartDate = StartDate,
                 EndDate = EndDate,
+                IncludeTime = IncludeTime,
+                StartTime = StartTime,
+                EndTime = EndTime,
                 IsRecursive = IsRecursive,
                 MaxDepth = MaxDepth,
                 IncludeHiddenFiles = IncludeHiddenFiles,
@@ -375,7 +499,10 @@ namespace FileAuditor.WPF.ViewModels
                 ExcludeFileTypes = ParseList(ExcludeFileTypes),
                 ExcludePatterns = ParseList(ExcludePatterns)
             };
+
+            return config;
         }
+
 
         private List<string> ParseList(string input)
         {

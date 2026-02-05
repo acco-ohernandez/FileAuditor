@@ -12,6 +12,7 @@ namespace FileAuditor.Core.Services
         private readonly string _configDirectory;
         private readonly ILogger<ScanHistoryService>? _logger;
         private readonly JsonSerializerOptions _jsonOptions;
+        private readonly string _cleanupConfigDirectory;
 
         public ScanHistoryService(ILogger<ScanHistoryService>? logger = null)
         {
@@ -23,10 +24,12 @@ namespace FileAuditor.Core.Services
 
             _historyDirectory = Path.Combine(appFolder, "History");
             _configDirectory = Path.Combine(appFolder, "Configurations");
+            _cleanupConfigDirectory = Path.Combine(appFolder, "CleanupConfigurations"); // NEW
 
             // Create directories if they don't exist
             Directory.CreateDirectory(_historyDirectory);
             Directory.CreateDirectory(_configDirectory);
+            Directory.CreateDirectory(_cleanupConfigDirectory); // NEW
 
             _jsonOptions = new JsonSerializerOptions
             {
@@ -287,5 +290,103 @@ namespace FileAuditor.Core.Services
             var invalidChars = Path.GetInvalidFileNameChars();
             return string.Join("_", fileName.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
         }
+
+        // New methods
+        public async Task SaveCleanupConfigurationAsync(CleanupConfiguration config)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(config.Name))
+                    throw new ArgumentException("Configuration name cannot be empty");
+
+                var fileName = $"{SanitizeFileName(config.Name)}.json";
+                var filePath = Path.Combine(_cleanupConfigDirectory, fileName);
+
+                var json = JsonSerializer.Serialize(config, _jsonOptions);
+                await File.WriteAllTextAsync(filePath, json);
+
+                _logger?.LogInformation("Saved cleanup configuration: {Name}", config.Name);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error saving cleanup configuration: {Name}", config.Name);
+                throw;
+            }
+        }
+
+        public async Task<List<CleanupConfiguration>> GetSavedCleanupConfigurationsAsync()
+        {
+            try
+            {
+                var files = Directory.GetFiles(_cleanupConfigDirectory, "*.json");
+                var configurations = new List<CleanupConfiguration>();
+
+                foreach (var file in files)
+                {
+                    try
+                    {
+                        var json = await File.ReadAllTextAsync(file);
+                        var config = JsonSerializer.Deserialize<CleanupConfiguration>(json, _jsonOptions);
+
+                        if (config != null)
+                            configurations.Add(config);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Error reading cleanup configuration file: {File}", file);
+                    }
+                }
+
+                return configurations.OrderBy(c => c.Name).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error getting saved cleanup configurations");
+                throw;
+            }
+        }
+
+        public async Task<CleanupConfiguration?> GetCleanupConfigurationByNameAsync(string name)
+        {
+            try
+            {
+                var fileName = $"{SanitizeFileName(name)}.json";
+                var filePath = Path.Combine(_cleanupConfigDirectory, fileName);
+
+                if (!File.Exists(filePath))
+                    return null;
+
+                var json = await File.ReadAllTextAsync(filePath);
+                return JsonSerializer.Deserialize<CleanupConfiguration>(json, _jsonOptions);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error getting cleanup configuration by name: {Name}", name);
+                return null;
+            }
+        }
+
+        public async Task DeleteCleanupConfigurationAsync(string name)
+        {
+            try
+            {
+                var fileName = $"{SanitizeFileName(name)}.json";
+                var filePath = Path.Combine(_cleanupConfigDirectory, fileName);
+
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                    _logger?.LogInformation("Deleted cleanup configuration: {Name}", name);
+                }
+
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error deleting cleanup configuration: {Name}", name);
+                throw;
+            }
+        }
+
     }
 }
