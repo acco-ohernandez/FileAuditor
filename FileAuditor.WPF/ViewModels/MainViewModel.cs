@@ -387,9 +387,13 @@ namespace FileAuditor.WPF.ViewModels
 
             try
             {
+                // Parse paths from text
+                var pathItems = PathValidator.ParsePathsFromText(PathsText);
+
                 var config = new ScanConfiguration
                 {
                     Name = configName,
+                    Paths = pathItems,  // Add the parsed paths
                     CountMode = SelectedCountMode,
                     IsRecursive = IsRecursive,
                     MaxDepth = MaxDepth,
@@ -400,7 +404,6 @@ namespace FileAuditor.WPF.ViewModels
                     EnableFileTypeBreakdown = EnableFileTypeBreakdown,
                     IncludeFileTypes = ParseFileTypes(IncludeFileTypes),
                     ExcludeFileTypes = ParseFileTypes(ExcludeFileTypes),
-                    // New properties
                     OutputFormat = OutputFormat,
                     OutputPath = OutputPath,
                     EnableHistory = EnableHistory,
@@ -425,6 +428,9 @@ namespace FileAuditor.WPF.ViewModels
             if (SelectedConfiguration == null)
                 return;
 
+            // Load paths into text box
+            PathsText = string.Join(Environment.NewLine, SelectedConfiguration.Paths.Select(p => p.Path));
+
             SelectedCountMode = SelectedConfiguration.CountMode;
             IsRecursive = SelectedConfiguration.IsRecursive;
             MaxDepth = SelectedConfiguration.MaxDepth;
@@ -435,8 +441,6 @@ namespace FileAuditor.WPF.ViewModels
             EnableFileTypeBreakdown = SelectedConfiguration.EnableFileTypeBreakdown;
             IncludeFileTypes = string.Join(", ", SelectedConfiguration.IncludeFileTypes);
             ExcludeFileTypes = string.Join(", ", SelectedConfiguration.ExcludeFileTypes);
-
-            // Load new properties
             OutputFormat = SelectedConfiguration.OutputFormat;
             OutputPath = SelectedConfiguration.OutputPath;
             EnableHistory = SelectedConfiguration.EnableHistory;
