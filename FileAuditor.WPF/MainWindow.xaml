@@ -10,7 +10,7 @@
         Title="File Auditor" Height="800" Width="1400"
         MinHeight="600" MinWidth="1000"
         WindowStartupLocation="CenterScreen">
-
+   
     <Window.Resources>
         <converters:BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
         <converters:ScanStatusToColorConverter x:Key="StatusToColorConverter"/>
@@ -23,20 +23,20 @@
             <Setter Property="Margin" Value="0,10,0,5"/>
         </Style>
 
-        <Style x:Key="GroupBoxStyle" TargetType="GroupBox">
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="Padding" Value="10"/>
-            <Setter Property="BorderBrush" Value="#CCCCCC"/>
-            <Setter Property="BorderThickness" Value="1"/>
-        </Style>
-
         <Style x:Key="ButtonStyle" TargetType="Button">
             <Setter Property="Padding" Value="10,5"/>
             <Setter Property="Margin" Value="5"/>
             <Setter Property="MinWidth" Value="100"/>
         </Style>
-    </Window.Resources>
 
+        <!-- Expander Style (replaces GroupBoxStyle for Expanders) -->
+        <Style x:Key="ExpanderStyle" TargetType="Expander">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="BorderBrush" Value="#CCCCCC"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+    </Window.Resources>
+    
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -63,179 +63,181 @@
         </Menu>
 
         <!-- Main Content -->
-        <Grid Grid.Row="1" Margin="10">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="350"/>
-                <ColumnDefinition Width="5"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+        <TabControl Grid.Row="1" Margin="10">
+            <!-- Scan Tab -->
+            <TabItem Header="Scan">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="350"/>
+                        <ColumnDefinition Width="5"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
-            <!-- Left Panel - Configuration -->
-            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
-                <StackPanel>
-                    <!-- Paths Input -->
-                    <GroupBox Header="Paths to Scan" Style="{StaticResource GroupBoxStyle}">
+                    <!-- Left Panel - Configuration (using Expanders now) -->
+                    <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
                         <StackPanel>
-                            <TextBlock Text="Enter paths (one per line):" Margin="0,0,0,5"/>
-                            <TextBox Text="{Binding PathsText, UpdateSourceTrigger=PropertyChanged}"
+                            <!-- Paths Input -->
+                            <Expander Header="Paths to Scan" IsExpanded="True" Style="{StaticResource ExpanderStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="Enter paths (one per line):" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding PathsText, UpdateSourceTrigger=PropertyChanged}"
                                      Height="120"
                                      AcceptsReturn="True"
                                      TextWrapping="Wrap"
                                      VerticalScrollBarVisibility="Auto"
                                      FontFamily="Consolas"/>
 
-                            <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                                <Button Content="Browse..." 
+                                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                        <Button Content="Browse..." 
                                         Command="{Binding BrowseFolderCommand}"
                                         Style="{StaticResource ButtonStyle}"/>
-                                <Button Content="Import CSV" 
+                                        <Button Content="Import CSV" 
                                         Command="{Binding ImportFromCsvCommand}"
                                         Style="{StaticResource ButtonStyle}"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </GroupBox>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Expander>
 
-                    <!-- Scan Options -->
-                    <GroupBox Header="Scan Options" Style="{StaticResource GroupBoxStyle}">
-                        <StackPanel>
-                            <!-- Count Mode -->
-                            <TextBlock Text="Count Mode:" Style="{StaticResource SectionHeaderStyle}"/>
-                            <ComboBox ItemsSource="{Binding CountModes}"
+                            <!-- Scan Options -->
+                            <Expander Header="Scan Options" IsExpanded="True" Style="{StaticResource ExpanderStyle}">
+                                <!-- Keep existing scan options content -->
+                                <StackPanel>
+                                    <TextBlock Text="Count Mode:" Style="{StaticResource SectionHeaderStyle}"/>
+                                    <ComboBox ItemsSource="{Binding CountModes}"
                                       SelectedItem="{Binding SelectedCountMode}"
                                       Margin="0,0,0,10"/>
 
-                            <!-- Recursive -->
-                            <CheckBox Content="Recursive scan"
+                                    <CheckBox Content="Recursive scan"
                                       IsChecked="{Binding IsRecursive}"
                                       Margin="0,5"/>
 
-                            <!-- Max Depth -->
-                            <StackPanel Orientation="Horizontal" Margin="0,5">
-                                <TextBlock Text="Max Depth:" VerticalAlignment="Center" Width="100"/>
-                                <TextBox Text="{Binding MaxDepth, UpdateSourceTrigger=PropertyChanged}"
+                                    <StackPanel Orientation="Horizontal" Margin="0,5">
+                                        <TextBlock Text="Max Depth:" VerticalAlignment="Center" Width="100"/>
+                                        <TextBox Text="{Binding MaxDepth, UpdateSourceTrigger=PropertyChanged}"
                                          Width="100"
                                          IsEnabled="{Binding IsRecursive}"/>
-                                <TextBlock Text="(leave empty for unlimited)" 
+                                        <TextBlock Text="(leave empty for unlimited)" 
                                            VerticalAlignment="Center" 
                                            Margin="5,0,0,0"
                                            FontSize="10"
                                            Foreground="Gray"/>
-                            </StackPanel>
+                                    </StackPanel>
 
-                            <!-- Parallel Threads -->
-                            <StackPanel Orientation="Horizontal" Margin="0,5">
-                                <TextBlock Text="Parallel Threads:" VerticalAlignment="Center" Width="100"/>
-                                <TextBox Text="{Binding ParallelThreadCount, UpdateSourceTrigger=PropertyChanged}"
+                                    <StackPanel Orientation="Horizontal" Margin="0,5">
+                                        <TextBlock Text="Parallel Threads:" VerticalAlignment="Center" Width="100"/>
+                                        <TextBox Text="{Binding ParallelThreadCount, UpdateSourceTrigger=PropertyChanged}"
                                          Width="100"/>
-                            </StackPanel>
+                                    </StackPanel>
 
-                            <!-- Include Hidden Files -->
-                            <CheckBox Content="Include hidden files"
+                                    <CheckBox Content="Include hidden files"
                                       IsChecked="{Binding IncludeHiddenFiles}"
                                       Margin="0,5"/>
 
-                            <!-- File Type Breakdown -->
-                            <CheckBox Content="Enable file type breakdown"
+                                    <CheckBox Content="Enable file type breakdown"
                                       IsChecked="{Binding EnableFileTypeBreakdown}"
                                       Margin="0,5"/>
-                        </StackPanel>
-                    </GroupBox>
+                                </StackPanel>
+                            </Expander>
 
-                    <!-- Box Drive Options -->
-                    <GroupBox Header="Box Drive Options" Style="{StaticResource GroupBoxStyle}">
-                        <StackPanel>
-                            <CheckBox Content="Enable Box Drive refresh"
+                            <!-- Box Drive Options -->
+                            <Expander Header="Box Drive Options" IsExpanded="False" Style="{StaticResource ExpanderStyle}">
+                                <!-- Keep existing Box Drive content -->
+                                <StackPanel>
+                                    <CheckBox Content="Enable Box Drive refresh"
                                       IsChecked="{Binding BoxDriveRefreshEnabled}"
                                       Margin="0,5"/>
 
-                            <StackPanel Orientation="Horizontal" Margin="0,5">
-                                <TextBlock Text="Timeout (seconds):" 
+                                    <StackPanel Orientation="Horizontal" Margin="0,5">
+                                        <TextBlock Text="Timeout (seconds):" 
                                            VerticalAlignment="Center" 
                                            Width="120"/>
-                                <TextBox Text="{Binding BoxDriveRefreshTimeout, UpdateSourceTrigger=PropertyChanged}"
+                                        <TextBox Text="{Binding BoxDriveRefreshTimeout, UpdateSourceTrigger=PropertyChanged}"
                                          Width="100"
                                          IsEnabled="{Binding BoxDriveRefreshEnabled}"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </GroupBox>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Expander>
 
-                    <!-- File Type Filters -->
-                    <GroupBox Header="File Type Filters" Style="{StaticResource GroupBoxStyle}">
-                        <StackPanel>
-                            <TextBlock Text="Include types (comma-separated):" Margin="0,0,0,5"/>
-                            <TextBox Text="{Binding IncludeFileTypes, UpdateSourceTrigger=PropertyChanged}"
+                            <!-- File Type Filters -->
+                            <Expander Header="File Type Filters" IsExpanded="False" Style="{StaticResource ExpanderStyle}">
+                                <!-- Keep existing filters content -->
+                                <StackPanel>
+                                    <TextBlock Text="Include types (comma-separated):" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding IncludeFileTypes, UpdateSourceTrigger=PropertyChanged}"
                                      Margin="0,0,0,10"/>
-                            <TextBlock Text="Example: .docx, .pdf, .xlsx" 
+                                    <TextBlock Text="Example: .docx, .pdf, .xlsx" 
                                        FontSize="10" 
                                        Foreground="Gray" 
                                        Margin="0,0,0,10"/>
 
-                            <TextBlock Text="Exclude types (comma-separated):" Margin="0,0,0,5"/>
-                            <TextBox Text="{Binding ExcludeFileTypes, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBlock Text="Example: .tmp, .log" 
+                                    <TextBlock Text="Exclude types (comma-separated):" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding ExcludeFileTypes, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Text="Example: .tmp, .log" 
                                        FontSize="10" 
                                        Foreground="Gray" 
                                        Margin="0,5,0,0"/>
-                        </StackPanel>
-                    </GroupBox>
+                                </StackPanel>
+                            </Expander>
 
-                    <!-- CLI/Output Settings -->
-                    <GroupBox Header="CLI / Output Settings" Style="{StaticResource GroupBoxStyle}">
-                        <StackPanel>
-                            <TextBlock Text="Output Format:" Margin="0,0,0,5"/>
-                            <ComboBox ItemsSource="{Binding OutputFormats}"
+                            <!-- CLI/Output Settings -->
+                            <Expander Header="CLI / Output Settings" IsExpanded="False" Style="{StaticResource ExpanderStyle}">
+                                <!-- Keep existing CLI settings content -->
+                                <StackPanel>
+                                    <TextBlock Text="Output Format:" Margin="0,0,0,5"/>
+                                    <ComboBox ItemsSource="{Binding OutputFormats}"
                                       SelectedItem="{Binding OutputFormat}"
                                       Margin="0,0,0,10"/>
 
-                            <TextBlock Text="Output Path:" Margin="0,0,0,5"/>
-                            <TextBox Text="{Binding OutputPath, UpdateSourceTrigger=PropertyChanged}"
+                                    <TextBlock Text="Output Path:" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding OutputPath, UpdateSourceTrigger=PropertyChanged}"
                                      Margin="0,0,0,5"/>
-                            <TextBlock Text="Use {timestamp} for date/time"
+                                    <TextBlock Text="Use {timestamp} for date/time" 
                                        FontSize="10" 
                                        Foreground="Gray" 
                                        Margin="0,0,0,10"/>
 
-                            <CheckBox Content="Enable scan history"
+                                    <CheckBox Content="Enable scan history"
                                       IsChecked="{Binding EnableHistory}"
                                       Margin="0,5"/>
 
-                            <CheckBox Content="Enable comparison tracking"
+                                    <CheckBox Content="Enable comparison tracking"
                                       IsChecked="{Binding EnableComparison}"
                                       Margin="0,5"/>
 
-                            <StackPanel Orientation="Horizontal" Margin="0,5">
-                                <TextBlock Text="Retention (days):" 
+                                    <StackPanel Orientation="Horizontal" Margin="0,5">
+                                        <TextBlock Text="Retention (days):" 
                                            VerticalAlignment="Center" 
                                            Width="120"/>
-                                <TextBox Text="{Binding ComparisonRetentionDays, UpdateSourceTrigger=PropertyChanged}"
+                                        <TextBox Text="{Binding ComparisonRetentionDays, UpdateSourceTrigger=PropertyChanged}"
                                          Width="100"
                                          IsEnabled="{Binding EnableComparison}"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </GroupBox>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Expander>
 
-                    <!-- Saved Configurations -->
-                    <GroupBox Header="Saved Configurations" Style="{StaticResource GroupBoxStyle}">
-                        <StackPanel>
-                            <ComboBox ItemsSource="{Binding SavedConfigurations}"
+                            <!-- Saved Configurations -->
+                            <Expander Header="Saved Configurations" IsExpanded="False" Style="{StaticResource ExpanderStyle}">
+                                <!-- Keep existing saved configs content -->
+                                <StackPanel>
+                                    <ComboBox ItemsSource="{Binding SavedConfigurations}"
                                       SelectedItem="{Binding SelectedConfiguration}"
                                       DisplayMemberPath="Name"
                                       Margin="0,0,0,5"/>
-                            <StackPanel Orientation="Horizontal">
-                                <Button Content="Load" 
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="Load" 
                                         Command="{Binding LoadConfigurationCommand}"
                                         Style="{StaticResource ButtonStyle}"
                                         IsEnabled="{Binding SelectedConfiguration, Converter={StaticResource BoolToVisConverter}}"/>
-                                <Button Content="Save Current" 
+                                        <Button Content="Save Current" 
                                         Command="{Binding SaveConfigurationCommand}"
                                         Style="{StaticResource ButtonStyle}"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </GroupBox>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Expander>
 
-                    <!-- Action Buttons -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
-                        <Button Content="Start Scan"
+                            <!-- Action Buttons -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
+                                <Button Content="Start Scan"
                                 Command="{Binding StartScanCommand}"
                                 Style="{StaticResource ButtonStyle}"
                                 IsEnabled="{Binding IsScanning, Converter={StaticResource BoolToVisConverter}, ConverterParameter=invert}"
@@ -244,7 +246,7 @@
                                 FontWeight="Bold"
                                 Padding="20,10"
                                 MinWidth="120"/>
-                        <Button Content="Cancel"
+                                <Button Content="Cancel"
                                 Command="{Binding CancelScanCommand}"
                                 Style="{StaticResource ButtonStyle}"
                                 IsEnabled="{Binding IsScanning}"
@@ -252,48 +254,49 @@
                                 Foreground="White"
                                 Padding="20,10"
                                 MinWidth="120"/>
-                    </StackPanel>
-                </StackPanel>
-            </ScrollViewer>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
 
-            <!-- Splitter -->
-            <GridSplitter Grid.Column="1" 
+                    <!-- Splitter -->
+                    <GridSplitter Grid.Column="1" 
                           Width="5" 
                           HorizontalAlignment="Stretch" 
                           Background="#CCCCCC"/>
 
-            <!-- Right Panel - Results -->
-            <Grid Grid.Column="2">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
+                    <!-- Right Panel - Results (keep existing) -->
+                    <Grid Grid.Column="2">
+                        <!-- Keep all existing scan results content -->
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-                <!-- Results Header -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5">
-                    <TextBlock Text="Scan Results" 
+                        <!-- Results Header -->
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5">
+                            <TextBlock Text="Scan Results" 
                                FontSize="16" 
                                FontWeight="Bold" 
                                VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding ScanResults.Count, StringFormat=' ({0} items)'}" 
+                            <TextBlock Text="{Binding ScanResults.Count, StringFormat=' ({0} items)'}" 
                                FontSize="14" 
                                VerticalAlignment="Center" 
                                Margin="5,0,0,0"/>
-                    <Button Content="Clear Results" 
+                            <Button Content="Clear Results" 
                             Command="{Binding ClearResultsCommand}"
                             Style="{StaticResource ButtonStyle}"
                             Margin="20,0,0,0"/>
-                    <Button Content="Export to CSV" 
+                            <Button Content="Export to CSV" 
                             Command="{Binding ExportToCsvCommand}"
                             Style="{StaticResource ButtonStyle}"/>
-                    <Button Content="Export to JSON" 
+                            <Button Content="Export to JSON" 
                             Command="{Binding ExportToJsonCommand}"
                             Style="{StaticResource ButtonStyle}"/>
-                </StackPanel>
+                        </StackPanel>
 
-                <!-- Results DataGrid -->
-                <DataGrid Grid.Row="1" 
+                        <!-- Results DataGrid -->
+                        <DataGrid Grid.Row="1" 
                           ItemsSource="{Binding ScanResults}"
                           SelectedItem="{Binding SelectedScanResult}"
                           AutoGenerateColumns="False"
@@ -304,146 +307,469 @@
                           CanUserResizeRows="False"
                           CanUserSortColumns="True"
                           Margin="5">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Path" 
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Path" 
                                             Binding="{Binding Path}" 
                                             Width="2*"
                                             MinWidth="200"/>
 
-                        <DataGridTextColumn Header="Status" 
+                                <DataGridTextColumn Header="Status" 
                                             Binding="{Binding Status}" 
                                             Width="100">
-                            <DataGridTextColumn.ElementStyle>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground" 
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" 
                                             Value="{Binding Status, Converter={StaticResource StatusToColorConverter}}"/>
-                                    <Setter Property="FontWeight" Value="SemiBold"/>
-                                </Style>
-                            </DataGridTextColumn.ElementStyle>
-                        </DataGridTextColumn>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
 
-                        <DataGridTextColumn Header="Folders" 
+                                <DataGridTextColumn Header="Folders" 
                                             Binding="{Binding TotalFolders, StringFormat=N0}" 
                                             Width="100">
-                            <DataGridTextColumn.ElementStyle>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="HorizontalAlignment" Value="Right"/>
-                                </Style>
-                            </DataGridTextColumn.ElementStyle>
-                        </DataGridTextColumn>
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
 
-                        <DataGridTextColumn Header="Files" 
+                                <DataGridTextColumn Header="Files" 
                                             Binding="{Binding TotalFiles, StringFormat=N0}" 
                                             Width="100">
-                            <DataGridTextColumn.ElementStyle>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="HorizontalAlignment" Value="Right"/>
-                                </Style>
-                            </DataGridTextColumn.ElementStyle>
-                        </DataGridTextColumn>
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
 
-                        <DataGridTextColumn Header="Size" 
+                                <DataGridTextColumn Header="Size" 
                                             Binding="{Binding TotalSizeBytes, Converter={StaticResource BytesToSizeConverter}}" 
                                             Width="120">
-                            <DataGridTextColumn.ElementStyle>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="HorizontalAlignment" Value="Right"/>
-                                </Style>
-                            </DataGridTextColumn.ElementStyle>
-                        </DataGridTextColumn>
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
 
-                        <DataGridTextColumn Header="Duration" 
+                                <DataGridTextColumn Header="Duration" 
                                             Binding="{Binding Duration, StringFormat='{}{0:mm}:{0:ss}'}" 
                                             Width="80">
-                            <DataGridTextColumn.ElementStyle>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="HorizontalAlignment" Value="Center"/>
-                                </Style>
-                            </DataGridTextColumn.ElementStyle>
-                        </DataGridTextColumn>
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
 
-                        <DataGridCheckBoxColumn Header="Box Drive" 
+                                <DataGridCheckBoxColumn Header="Box Drive" 
                                                 Binding="{Binding IsBoxDrivePath, Mode=OneWay}" 
                                                 Width="80">
-                            <DataGridCheckBoxColumn.ElementStyle>
-                                <Style TargetType="CheckBox">
-                                    <Setter Property="HorizontalAlignment" Value="Center"/>
-                                    <Setter Property="IsEnabled" Value="False"/>
-                                </Style>
-                            </DataGridCheckBoxColumn.ElementStyle>
-                        </DataGridCheckBoxColumn>
+                                    <DataGridCheckBoxColumn.ElementStyle>
+                                        <Style TargetType="CheckBox">
+                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                            <Setter Property="IsEnabled" Value="False"/>
+                                        </Style>
+                                    </DataGridCheckBoxColumn.ElementStyle>
+                                </DataGridCheckBoxColumn>
 
-                        <DataGridCheckBoxColumn Header="Network" 
+                                <DataGridCheckBoxColumn Header="Network" 
                                                 Binding="{Binding IsNetworkPath, Mode=OneWay}" 
                                                 Width="80">
-                            <DataGridCheckBoxColumn.ElementStyle>
-                                <Style TargetType="CheckBox">
-                                    <Setter Property="HorizontalAlignment" Value="Center"/>
-                                    <Setter Property="IsEnabled" Value="False"/>
-                                </Style>
-                            </DataGridCheckBoxColumn.ElementStyle>
-                        </DataGridCheckBoxColumn>
+                                    <DataGridCheckBoxColumn.ElementStyle>
+                                        <Style TargetType="CheckBox">
+                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                            <Setter Property="IsEnabled" Value="False"/>
+                                        </Style>
+                                    </DataGridCheckBoxColumn.ElementStyle>
+                                </DataGridCheckBoxColumn>
 
-                        <DataGridTextColumn Header="Errors" 
+                                <DataGridTextColumn Header="Errors" 
                                             Binding="{Binding Errors.Count}" 
                                             Width="70">
-                            <DataGridTextColumn.ElementStyle>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="HorizontalAlignment" Value="Center"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding HasErrors}" Value="True">
-                                            <Setter Property="Foreground" Value="Red"/>
-                                            <Setter Property="FontWeight" Value="Bold"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </DataGridTextColumn.ElementStyle>
-                        </DataGridTextColumn>
-                    </DataGrid.Columns>
-                </DataGrid>
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasErrors}" Value="True">
+                                                    <Setter Property="Foreground" Value="Red"/>
+                                                    <Setter Property="FontWeight" Value="Bold"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
 
-                <!-- Details Panel -->
-                <Expander Grid.Row="2" 
+                        <!-- Details Panel -->
+                        <Expander Grid.Row="2" 
                           Header="Details" 
                           IsExpanded="False"
                           Margin="5"
                           Visibility="{Binding SelectedScanResult, Converter={StaticResource BoolToVisConverter}}">
-                    <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="10">
-                            <TextBlock Text="{Binding SelectedScanResult.Path, StringFormat='Path: {0}'}" 
+                            <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto">
+                                <StackPanel Margin="10">
+                                    <TextBlock Text="{Binding SelectedScanResult.Path, StringFormat='Path: {0}'}" 
                                        FontWeight="SemiBold" 
                                        Margin="0,0,0,10"/>
 
-                            <TextBlock Text="{Binding SelectedScanResult.GetStatusDescription, StringFormat='Status: {0}'}" 
+                                    <TextBlock Text="{Binding SelectedScanResult.GetStatusDescription, StringFormat='Status: {0}'}" 
                                        Margin="0,0,0,5"/>
 
-                            <TextBlock Text="{Binding SelectedScanResult.StartTime, StringFormat='Start Time: {0:yyyy-MM-dd HH:mm:ss}'}" 
+                                    <TextBlock Text="{Binding SelectedScanResult.StartTime, StringFormat='Start Time: {0:yyyy-MM-dd HH:mm:ss}'}" 
                                        Margin="0,0,0,5"/>
 
-                            <TextBlock Margin="0,10,0,5" 
+                                    <TextBlock Margin="0,10,0,5" 
                                        FontWeight="SemiBold"
                                        Visibility="{Binding SelectedScanResult.HasErrors, Converter={StaticResource BoolToVisConverter}}">
                                 <Run Text="Errors ("/><Run Text="{Binding SelectedScanResult.Errors.Count, Mode=OneWay}"/><Run Text="):"/>
-                            </TextBlock>
+                                    </TextBlock>
 
-                            <ItemsControl ItemsSource="{Binding SelectedScanResult.Errors}"
+                                    <ItemsControl ItemsSource="{Binding SelectedScanResult.Errors}"
                                           Visibility="{Binding SelectedScanResult.HasErrors, Converter={StaticResource BoolToVisConverter}}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Margin="0,2">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Margin="0,2">
                                             <Run Text="• " Foreground="Red"/>
                                             <Run Text="{Binding ErrorType, Mode=OneWay}" FontWeight="SemiBold" Foreground="Red"/>
                                             <Run Text=" - "/>
                                             <Run Text="{Binding Message, Mode=OneWay}"/>
-                                        </TextBlock>
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Expander>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- Cleanup Tab -->
+            <TabItem Header="Cleanup">
+                <TabItem.DataContext>
+                    <Binding Path="CleanupViewModel" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                </TabItem.DataContext>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="350"/>
+                        <ColumnDefinition Width="5"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left Panel - Cleanup Configuration -->
+                    <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <!-- Paths to Clean -->
+                            <Expander Header="Paths to Clean" IsExpanded="True" Style="{StaticResource ExpanderStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="Enter paths (one per line):" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding PathsText}"
+                                 Height="120"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 FontFamily="Consolas"/>
+
+                                    <Button Content="Browse..." 
+                                Command="{Binding CleanupViewModel.BrowseFolderCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                Style="{StaticResource ButtonStyle}"
+                                Margin="0,5,0,0"/>
+                                </StackPanel>
+                            </Expander>
+
+                            <!-- Cleanup Target -->
+                            <Expander Header="Cleanup Target" IsExpanded="True" Style="{StaticResource ExpanderStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="What to clean:" Margin="0,0,0,5"/>
+                                    <ComboBox ItemsSource="{Binding CleanupViewModel.CleanupTargets, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  SelectedItem="{Binding CleanupViewModel.SelectedTarget, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  Margin="0,0,0,10"/>
+
+                                    <CheckBox Content="Recursive scan"
+                                  IsChecked="{Binding CleanupViewModel.IsRecursive, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  Margin="0,5"/>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,5">
+                                        <TextBlock Text="Max Depth:" VerticalAlignment="Center" Width="100"/>
+                                        <TextBox Text="{Binding CleanupViewModel.MaxDepth, UpdateSourceTrigger=PropertyChanged, RelativeSource={RelativeSource AncestorType=Window}}"
+                                     Width="100"
+                                     IsEnabled="{Binding CleanupViewModel.IsRecursive, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                    </StackPanel>
+
+                                    <CheckBox Content="Include hidden files"
+                                  IsChecked="{Binding CleanupViewModel.IncludeHiddenFiles, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  Margin="0,5"/>
+                                </StackPanel>
+                            </Expander>
+
+                            <!-- Date Criteria -->
+                            <Expander Header="Date Criteria" IsExpanded="True" Style="{StaticResource ExpanderStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="Date Mode:" Margin="0,0,0,5"/>
+                                    <ComboBox ItemsSource="{Binding CleanupViewModel.DateModes, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  SelectedItem="{Binding CleanupViewModel.SelectedDateMode, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  Margin="0,0,0,10"/>
+
+                                    <!-- Days Old (for OlderThan/NewerThan) -->
+                                    <StackPanel Visibility="{Binding CleanupViewModel.SelectedDateMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisConverter}}">
+                                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                                            <TextBlock Text="Days:" VerticalAlignment="Center" Width="100"/>
+                                            <TextBox Text="{Binding CleanupViewModel.DaysOld, UpdateSourceTrigger=PropertyChanged, RelativeSource={RelativeSource AncestorType=Window}}"
+                                         Width="100"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- Date Range -->
+                                    <StackPanel Margin="0,5">
+                                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                                            <TextBlock Text="Start Date:" VerticalAlignment="Center" Width="100"/>
+                                            <DatePicker SelectedDate="{Binding CleanupViewModel.StartDate, RelativeSource={RelativeSource AncestorType=Window}}"
+                                           Width="150"/>
+                                        </StackPanel>
+
+                                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                                            <TextBlock Text="End Date:" VerticalAlignment="Center" Width="100"/>
+                                            <DatePicker SelectedDate="{Binding CleanupViewModel.EndDate, RelativeSource={RelativeSource AncestorType=Window}}"
+                                           Width="150"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Expander>
+
+                            <!-- File Type Filters -->
+                            <Expander Header="File Type Filters" IsExpanded="False" Style="{StaticResource ExpanderStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="Include types (comma-separated):" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding CleanupViewModel.IncludeFileTypes, UpdateSourceTrigger=PropertyChanged, RelativeSource={RelativeSource AncestorType=Window}}"
+                                 Margin="0,0,0,10"/>
+                                    <TextBlock Text="Example: .docx, .pdf, .xlsx" 
+                                   FontSize="10" 
+                                   Foreground="Gray" 
+                                   Margin="0,0,0,10"/>
+
+                                    <TextBlock Text="Exclude types (comma-separated):" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding CleanupViewModel.ExcludeFileTypes, UpdateSourceTrigger=PropertyChanged, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                    <TextBlock Text="Example: .tmp, .log" 
+                                   FontSize="10" 
+                                   Foreground="Gray" 
+                                   Margin="0,5,0,10"/>
+
+                                    <TextBlock Text="Exclude patterns (one per line):" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding CleanupViewModel.ExcludePatterns, UpdateSourceTrigger=PropertyChanged, RelativeSource={RelativeSource AncestorType=Window}}"
+                                 Height="60"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"/>
+                                    <TextBlock Text="Example: .*backup.*, .*temp.*" 
+                                   FontSize="10" 
+                                   Foreground="Gray" 
+                                   Margin="0,5,0,0"/>
+                                </StackPanel>
+                            </Expander>
+
+                            <!-- Safety Options -->
+                            <Expander Header="Safety Options" IsExpanded="True" Style="{StaticResource ExpanderStyle}">
+                                <StackPanel>
+                                    <CheckBox Content="Dry Run (preview only)"
+                                  IsChecked="{Binding CleanupViewModel.DryRun, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  Margin="0,5"
+                                  FontWeight="Bold"
+                                  Foreground="Red"/>
+
+                                    <CheckBox Content="Require confirmation"
+                                  IsChecked="{Binding CleanupViewModel.RequireConfirmation, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  Margin="0,5"/>
+
+                                    <CheckBox Content="Move to Recycle Bin (vs permanent delete)"
+                                  IsChecked="{Binding CleanupViewModel.MoveToRecycleBin, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  Margin="0,5"/>
+                                </StackPanel>
+                            </Expander>
+
+                            <!-- Action Buttons -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
+                                <Button Content="Analyze"
+                            Command="{Binding CleanupViewModel.AnalyzeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            Style="{StaticResource ButtonStyle}"
+                            IsEnabled="{Binding CleanupViewModel.IsAnalyzing, Converter={StaticResource BoolToVisConverter}, ConverterParameter=invert, RelativeSource={RelativeSource AncestorType=Window}}"
+                            Background="#2196F3"
+                            Foreground="White"
+                            FontWeight="Bold"
+                            Padding="20,10"
+                            MinWidth="120"/>
+                                <Button Content="Execute Cleanup"
+                            Command="{Binding CleanupViewModel.ExecuteCleanupCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            Style="{StaticResource ButtonStyle}"
+                            IsEnabled="{Binding CleanupViewModel.IsDeleting, Converter={StaticResource BoolToVisConverter}, ConverterParameter=invert, RelativeSource={RelativeSource AncestorType=Window}}"
+                            Background="#FF9800"
+                            Foreground="White"
+                            FontWeight="Bold"
+                            Padding="20,10"
+                            MinWidth="120"/>
+                                <Button Content="Cancel"
+                            Command="{Binding CleanupViewModel.CancelCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            Style="{StaticResource ButtonStyle}"
+                            Background="#F44336"
+                            Foreground="White"
+                            Padding="20,10"
+                            MinWidth="120"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Splitter -->
+                    <GridSplitter Grid.Column="1" 
+                      Width="5" 
+                      HorizontalAlignment="Stretch" 
+                      Background="#CCCCCC"/>
+
+                    <!-- Right Panel - Results -->
+                    <Grid Grid.Column="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Results Header -->
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5">
+                            <TextBlock Text="Cleanup Analysis" 
+                           FontSize="16" 
+                           FontWeight="Bold" 
+                           VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding CleanupViewModel.AnalysisResults.Count, StringFormat=' ({0} paths)', RelativeSource={RelativeSource AncestorType=Window}}" 
+                           FontSize="14" 
+                           VerticalAlignment="Center" 
+                           Margin="5,0,0,0"/>
+                            <Button Content="Clear Results" 
+                        Command="{Binding CleanupViewModel.ClearResultsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        Style="{StaticResource ButtonStyle}"
+                        Margin="20,0,0,0"/>
+                            <Button Content="Export Results" 
+                        Command="{Binding CleanupViewModel.ExportResultsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        Style="{StaticResource ButtonStyle}"/>
+                        </StackPanel>
+
+                        <!-- Results List -->
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="5">
+                            <ItemsControl ItemsSource="{Binding CleanupViewModel.AnalysisResults, RelativeSource={RelativeSource AncestorType=Window}}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Expander Header="{Binding Path}" IsExpanded="True" Margin="0,5">
+                                            <Border BorderBrush="#CCCCCC" BorderThickness="1" Padding="10" Background="White">
+                                                <StackPanel>
+                                                    <!-- Summary -->
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <StackPanel Grid.Column="0">
+                                                            <TextBlock Text="{Binding FilesIdentified, StringFormat='Files Identified: {0:N0}'}" 
+                                                           FontWeight="SemiBold"/>
+                                                            <TextBlock Text="{Binding FoldersIdentified, StringFormat='Folders Identified: {0:N0}'}" 
+                                                           FontWeight="SemiBold"/>
+                                                            <TextBlock Text="{Binding TotalSizeBytes, StringFormat='Total Size: {0}'}" 
+                                                           FontWeight="SemiBold"/>
+                                                        </StackPanel>
+
+                                                        <StackPanel Grid.Column="1">
+                                                            <TextBlock Text="{Binding FilesDeleted, StringFormat='Files Deleted: {0:N0}'}" 
+                                                           Foreground="Red"
+                                                           FontWeight="SemiBold"/>
+                                                            <TextBlock Text="{Binding FoldersDeleted, StringFormat='Folders Deleted: {0:N0}'}" 
+                                                           Foreground="Red"
+                                                           FontWeight="SemiBold"/>
+                                                            <TextBlock Text="{Binding Status, StringFormat='Status: {0}'}" 
+                                                           FontWeight="SemiBold"/>
+                                                        </StackPanel>
+                                                    </Grid>
+
+                                                    <!-- Items List (expandable) -->
+                                                    <Expander Header="Items to Delete" IsExpanded="True" Margin="0,10,0,0">
+                                                        <DataGrid ItemsSource="{Binding Items}"
+                                                     AutoGenerateColumns="False"
+                                                     IsReadOnly="True"
+                                                     MaxHeight="300"
+                                                     GridLinesVisibility="Horizontal"
+                                                     AlternatingRowBackground="#F5F5F5">
+                                                            <DataGrid.Columns>
+                                                                <DataGridTextColumn Header="Path" Binding="{Binding Path}" Width="2*"/>
+                                                                <DataGridTextColumn Header="Type" Binding="{Binding IsDirectory}" Width="80">
+                                                                    <DataGridTextColumn.ElementStyle>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsDirectory}" Value="True">
+                                                                                    <Setter Property="Text" Value="Folder"/>
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding IsDirectory}" Value="False">
+                                                                                    <Setter Property="Text" Value="File"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </DataGridTextColumn.ElementStyle>
+                                                                </DataGridTextColumn>
+                                                                <DataGridTextColumn Header="Last Modified" 
+                                                                       Binding="{Binding LastModified, StringFormat='yyyy-MM-dd HH:mm:ss'}" 
+                                                                       Width="150"/>
+                                                                <DataGridTextColumn Header="Size" Binding="{Binding SizeBytes}" Width="100">
+                                                                    <DataGridTextColumn.ElementStyle>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                                                        </Style>
+                                                                    </DataGridTextColumn.ElementStyle>
+                                                                </DataGridTextColumn>
+                                                                <DataGridCheckBoxColumn Header="Deleted" Binding="{Binding WasDeleted}" Width="80">
+                                                                    <DataGridCheckBoxColumn.ElementStyle>
+                                                                        <Style TargetType="CheckBox">
+                                                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                                                            <Setter Property="IsEnabled" Value="False"/>
+                                                                        </Style>
+                                                                    </DataGridCheckBoxColumn.ElementStyle>
+                                                                </DataGridCheckBoxColumn>
+                                                            </DataGrid.Columns>
+                                                        </DataGrid>
+                                                    </Expander>
+
+                                                    <!-- Errors (if any) -->
+                                                    <StackPanel Visibility="{Binding HasErrors, Converter={StaticResource BoolToVisConverter}}" 
+                                                   Margin="0,10,0,0">
+                                                        <TextBlock Text="Errors:" FontWeight="Bold" Foreground="Red"/>
+                                                        <ItemsControl ItemsSource="{Binding Errors}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <TextBlock Margin="10,2,0,0">
+                                                            <Run Text="• " Foreground="Red"/>
+                                                            <Run Text="{Binding Path, Mode=OneWay}"/>
+                                                            <Run Text=": "/>
+                                                            <Run Text="{Binding Message, Mode=OneWay}"/>
+                                                                    </TextBlock>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </Expander>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                        </StackPanel>
-                    </ScrollViewer>
-                </Expander>
-            </Grid>
-        </Grid>
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+
+
+
+
+        </TabControl>
+
 
         <!-- Status Bar -->
         <StatusBar Grid.Row="2" Height="30">
@@ -466,17 +792,3 @@
     </Grid>
 </Window>
 
-
-
-<!--<Window x:Class="FileAuditor.WPF.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:FileAuditor.WPF"
-        mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
-
-    </Grid>
-</Window>-->

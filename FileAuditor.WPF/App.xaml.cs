@@ -54,9 +54,11 @@ namespace FileAuditor.WPF
             services.AddSingleton<IFileScanner, FileScanner>();
             services.AddSingleton<IExportService, ExportService>();
             services.AddSingleton<IScanHistoryService, ScanHistoryService>();
+            services.AddSingleton<ICleanupService, CleanupService>(); // ADD THIS LINE
 
             // ViewModels
             services.AddSingleton<MainViewModel>();
+            services.AddSingleton<CleanupViewModel>(); // ADD THIS LINE
 
             // Views
             services.AddSingleton<MainWindow>();
