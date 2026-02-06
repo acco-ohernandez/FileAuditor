@@ -31,7 +31,7 @@ namespace FileAuditor.WPF.ViewModels
         private CleanupTarget _selectedTarget = CleanupTarget.FilesOnly;
 
         [ObservableProperty]
-        private CleanupDateMode _selectedDateMode = CleanupDateMode.OlderThan;
+        private CleanupDateMode _selectedDateMode = CleanupDateMode.AnyDate;
 
         [ObservableProperty]
         private int _daysOld = 30;
@@ -112,6 +112,7 @@ namespace FileAuditor.WPF.ViewModels
 
         public ObservableCollection<CleanupDateMode> DateModes { get; } = new()
         {
+            CleanupDateMode.AnyDate,
             CleanupDateMode.OlderThan,
             CleanupDateMode.NewerThan,
             CleanupDateMode.DateRange,

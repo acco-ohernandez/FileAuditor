@@ -543,8 +543,8 @@
                                 <StackPanel>
                                     <TextBlock Text="Date Mode:" Margin="0,0,0,5" FontWeight="SemiBold"/>
                                     <ComboBox ItemsSource="{Binding DateModes}"
-                  SelectedItem="{Binding SelectedDateMode}"
-                  Margin="0,0,0,10"/>
+                                              SelectedItem="{Binding SelectedDateMode}"
+                                              Margin="0,0,0,10"/>
 
                                     <!-- Help Text -->
                                     <TextBlock TextWrapping="Wrap" FontSize="10" Foreground="Gray" Margin="0,0,0,10">
