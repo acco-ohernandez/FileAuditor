@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 
 using FileAuditor.WPF.ViewModels;
@@ -40,7 +41,7 @@ namespace FileAuditor.WPF
         {
             var helpWindow = new HelpWindow();
             helpWindow.Owner = this;
-            // Select the Scan Help tab (index 1)
+            // Select the File Counter tab (index 1)
             helpWindow.Loaded += (s, args) =>
             {
                 var tabControl = helpWindow.FindName("HelpTabControl") as System.Windows.Controls.TabControl;
@@ -78,11 +79,34 @@ namespace FileAuditor.WPF
             helpWindow.ShowDialog();
         }
 
+        private void OpenLogsFolder_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var logsFolder = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "FileAuditor", "Logs");
+
+                // Create the folder if it doesn't exist
+                Directory.CreateDirectory(logsFolder);
+
+                // Open in Windows Explorer
+                System.Diagnostics.Process.Start("explorer.exe", logsFolder);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Could not open logs folder:\n\n{ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
         private void About_Click(object sender, RoutedEventArgs e)
         {
             MessageBox.Show(
-                "File Auditor v1.0\n\n" +
-                "By Orlando R Hernandez\n\n" +
+                "File Auditor v1.4\n\n" +
+                "By: Orlando R Hernandez\n\n" +
                 "A comprehensive tool for auditing and cleaning file systems including:\n" +
                 "• Local drives\n" +
                 "• Network paths\n" +

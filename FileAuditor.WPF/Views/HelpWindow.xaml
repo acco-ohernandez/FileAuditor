@@ -113,7 +113,7 @@
                         <TextBlock Text="Navigation" Style="{StaticResource HelpSubHeader}"/>
                         <TextBlock Style="{StaticResource HelpText}">
                             Use the tabs at the top to switch between help topics:<LineBreak/>
-                            • <Bold>Scan Help:</Bold> Detailed scanning instructions<LineBreak/>
+                            • <Bold>File Counter:</Bold> Detailed scanning instructions<LineBreak/>
                             • <Bold>Cleanup Help:</Bold> Safe cleanup procedures<LineBreak/>
                             • <Bold>CLI Usage:</Bold> Command-line automation<LineBreak/>
                             • <Bold>Box Drive:</Bold> Box Drive integration details<LineBreak/>
@@ -123,8 +123,8 @@
                 </ScrollViewer>
             </TabItem>
 
-            <!-- Scan Help Tab -->
-            <TabItem Header="Scan Help">
+            <!-- File Counter Tab -->
+            <TabItem Header="File Counter">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="20">
                         <TextBlock Text="File System Scanning" Style="{StaticResource HelpSectionHeader}"/>

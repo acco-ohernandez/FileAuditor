@@ -52,6 +52,8 @@
                 <MenuItem Header="_Import Paths from CSV" Command="{Binding ImportFromCsvCommand}"/>
                 <MenuItem Header="_Export Results to CSV" Command="{Binding ExportToCsvCommand}"/>
                 <MenuItem Header="Export Results to _JSON" Command="{Binding ExportToJsonCommand}"/>
+                <!--OpenLogsFolder_Click-->
+                <MenuItem Header="Open _Logs Folder" Click="OpenLogsFolder_Click"/>
                 <Separator/>
                 <MenuItem Header="E_xit" Click="Exit_Click"/>
             </MenuItem>
@@ -65,12 +67,12 @@
                         <TextBlock Text="📖" FontSize="14"/>
                     </MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Scan Help" Click="ScanHelp_Click">
+                <MenuItem Header="File Counter" Click="ScanHelp_Click">
                     <MenuItem.Icon>
                         <TextBlock Text="🔍" FontSize="14"/>
                     </MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="Cleanup Help" Click="CleanupHelp_Click">
+                <MenuItem Header="Cleanup" Click="CleanupHelp_Click">
                     <MenuItem.Icon>
                         <TextBlock Text="🧹" FontSize="14"/>
                     </MenuItem.Icon>
@@ -91,8 +93,8 @@
 
         <!-- Main Content -->
         <TabControl Grid.Row="1" Margin="10">
-            <!-- Scan Tab -->
-            <TabItem Header="Scan">
+            <!-- File Counter Tab -->
+            <TabItem Header="File Counter">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="450"/>
