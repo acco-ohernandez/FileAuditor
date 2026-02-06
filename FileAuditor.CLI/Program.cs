@@ -211,6 +211,55 @@ namespace FileAuditor.CLI
 
                 Log.Information("Configuration loaded successfully");
                 Log.Information("Paths to clean: {PathCount}", config.TargetPaths.Count);
+                Log.Information("Configuration loaded successfully");
+                Log.Information("Paths to clean: {PathCount}", config.TargetPaths.Count);
+
+                // ADD THIS BLOCK:
+                Log.Information("Target: {Target}", config.Target);
+                Log.Information("Date Mode: {DateMode}", config.DateMode);
+
+                // Log date criteria details
+                if (config.DateMode == CleanupDateMode.OlderThan || config.DateMode == CleanupDateMode.NewerThan)
+                {
+                    if (config.CutoffDate.HasValue)
+                    {
+                        var cutoffDateTime = config.CutoffDate.Value;
+                        if (config.CutoffTime.HasValue)
+                        {
+                            cutoffDateTime = cutoffDateTime.Add(config.CutoffTime.Value);
+                        }
+                        Log.Information("Cutoff Date/Time: {DateTime:yyyy-MM-dd HH:mm:ss}", cutoffDateTime);
+                    }
+                    else
+                    {
+                        Log.Warning("No cutoff date specified");
+                    }
+                }
+                else if (config.DateMode == CleanupDateMode.DateRange)
+                {
+                    Log.Information("Date Range: {Start:yyyy-MM-dd} to {End:yyyy-MM-dd}", config.StartDate, config.EndDate);
+                    if (config.IncludeTime && config.StartTime.HasValue && config.EndTime.HasValue)
+                    {
+                        Log.Information("Time Range: {StartTime} to {EndTime}", config.StartTime, config.EndTime);
+                    }
+                }
+                else if (config.DateMode == CleanupDateMode.ExactDate)
+                {
+                    Log.Information("Exact Date: {Date:yyyy-MM-dd}", config.StartDate);
+                    if (config.IncludeTime && config.StartTime.HasValue)
+                    {
+                        Log.Information("Exact Time: {Time}", config.StartTime);
+                    }
+                }
+                else if (config.DateMode == CleanupDateMode.AnyDate)
+                {
+                    Log.Information("No date filtering applied");
+                }
+
+                Log.Information("Dry Run Mode: {DryRun}", config.DryRun);
+                Log.Information("Move to Recycle Bin: {RecycleBin}", config.MoveToRecycleBin);
+                // END OF ADDED BLOCK
+
                 Log.Information("Dry Run Mode: {DryRun}", config.DryRun);
 
                 if (config.DryRun)

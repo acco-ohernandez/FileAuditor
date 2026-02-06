@@ -33,8 +33,7 @@ namespace FileAuditor.WPF.ViewModels
         [ObservableProperty]
         private CleanupDateMode _selectedDateMode = CleanupDateMode.AnyDate;
 
-        [ObservableProperty]
-        private int _daysOld = 30;
+
 
         [ObservableProperty]
         private DateTime? _startDate = null;
@@ -100,8 +99,7 @@ namespace FileAuditor.WPF.ViewModels
         [ObservableProperty]
         private CleanupConfiguration? _selectedConfiguration;
 
-        [ObservableProperty]
-        private int _hoursOld = 0;
+
 
 
         // Helper properties for time input
@@ -116,6 +114,43 @@ namespace FileAuditor.WPF.ViewModels
 
         [ObservableProperty]
         private int _endTimeMinute = 59;
+
+        // CHANGED: Replace DaysOld with StartDate/EndDate and IncludeTime
+        //[ObservableProperty]
+        //private int _daysOld = 30;
+        // ADD THIS: HoursOld for finer control in OlderThan/NewerThan mode
+        //[ObservableProperty]
+        //private int _hoursOld = 0;
+
+        // ADDED these instead:
+        [ObservableProperty]
+        private DateTime? _cutoffDate = DateTime.Now.AddDays(-30);
+
+        [ObservableProperty]
+        private int _cutoffTimeHour = 0;
+
+        [ObservableProperty]
+        private int _cutoffTimeMinute = 0;
+
+        [ObservableProperty]
+        private TimeSpan _cutoffTime = new TimeSpan(0, 0, 0);
+
+        // Update cutoff time when hour/minute changes
+        partial void OnCutoffTimeHourChanged(int value)
+        {
+            if (value >= 0 && value <= 23)
+            {
+                CutoffTime = new TimeSpan(value, CutoffTimeMinute, 0);
+            }
+        }
+
+        partial void OnCutoffTimeMinuteChanged(int value)
+        {
+            if (value >= 0 && value <= 59)
+            {
+                CutoffTime = new TimeSpan(CutoffTimeHour, value, 0);
+            }
+        }
 
         // Update StartTime when hour/minute changes
         partial void OnStartTimeHourChanged(int value)
@@ -510,6 +545,10 @@ namespace FileAuditor.WPF.ViewModels
         [RelayCommand]
         private async Task SaveConfiguration()
         {
+            // Validate first
+            if (!ValidateConfiguration())
+                return;
+
             var configName = Microsoft.VisualBasic.Interaction.InputBox(
                 "Enter a name for this cleanup configuration:",
                 "Save Cleanup Configuration",
@@ -528,8 +567,8 @@ namespace FileAuditor.WPF.ViewModels
                     TargetPaths = pathItems,
                     Target = SelectedTarget,
                     DateMode = SelectedDateMode,
-                    DaysOld = DaysOld,
-                    HoursOld = HoursOld, // ADD THIS
+                    CutoffDate = CutoffDate,
+                    CutoffTime = CutoffTime,
                     StartDate = StartDate,
                     EndDate = EndDate,
                     IncludeTime = IncludeTime,
@@ -548,13 +587,85 @@ namespace FileAuditor.WPF.ViewModels
 
                 await _historyService.SaveCleanupConfigurationAsync(config);
                 await LoadSavedConfigurations();
+
+                var configPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "FileAuditor", "CleanupConfigurations", $"{SanitizeFileName(configName)}.json");
+
                 StatusMessage = $"Configuration '{configName}' saved";
+
+                MessageBox.Show(
+                    $"Configuration saved successfully!\n\n" +
+                    $"Name: {configName}\n" +
+                    $"Location: {configPath}\n\n" +
+                    $"This configuration can be used with:\n" +
+                    $"FileAuditor.CLI cleanup --config \"{configPath}\"",
+                    "Configuration Saved",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Error saving configuration:\n\n{ex.Message}",
                     "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private bool ValidateConfiguration()
+        {
+            var errors = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(PathsText))
+            {
+                errors.Add("At least one path must be specified");
+            }
+            else
+            {
+                var pathItems = PathValidator.ParsePathsFromText(PathsText);
+                if (!pathItems.Any(p => p.IsValid))
+                {
+                    errors.Add("No valid paths found");
+                }
+            }
+
+            switch (SelectedDateMode)
+            {
+                case CleanupDateMode.OlderThan:
+                case CleanupDateMode.NewerThan:
+                    if (!CutoffDate.HasValue)
+                        errors.Add("Cutoff date is required for this mode");
+                    break;
+
+                case CleanupDateMode.DateRange:
+                    if (!StartDate.HasValue || !EndDate.HasValue)
+                        errors.Add("Start and End dates are required for Date Range mode");
+                    else if (StartDate > EndDate)
+                        errors.Add("Start date must be before or equal to End date");
+                    break;
+
+                case CleanupDateMode.ExactDate:
+                    if (!StartDate.HasValue)
+                        errors.Add("Date is required for Exact Date mode");
+                    break;
+            }
+
+            if (errors.Any())
+            {
+                MessageBox.Show(
+                    "Configuration validation failed:\n\n" + string.Join("\n", errors),
+                    "Validation Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return false;
+            }
+
+            return true;
+        }
+
+        private string SanitizeFileName(string fileName)
+        {
+            var invalid = Path.GetInvalidFileNameChars();
+            return string.Join("_", fileName.Split(invalid, StringSplitOptions.RemoveEmptyEntries));
         }
 
         [RelayCommand]
@@ -566,13 +677,19 @@ namespace FileAuditor.WPF.ViewModels
             PathsText = string.Join(Environment.NewLine, SelectedConfiguration.TargetPaths.Select(p => p.Path));
             SelectedTarget = SelectedConfiguration.Target;
             SelectedDateMode = SelectedConfiguration.DateMode;
-            DaysOld = SelectedConfiguration.DaysOld;
-            HoursOld = SelectedConfiguration.HoursOld;
+
+            CutoffDate = SelectedConfiguration.CutoffDate;
+            if (SelectedConfiguration.CutoffTime.HasValue)
+            {
+                CutoffTimeHour = SelectedConfiguration.CutoffTime.Value.Hours;
+                CutoffTimeMinute = SelectedConfiguration.CutoffTime.Value.Minutes;
+                CutoffTime = SelectedConfiguration.CutoffTime.Value;
+            }
+
             StartDate = SelectedConfiguration.StartDate;
             EndDate = SelectedConfiguration.EndDate;
             IncludeTime = SelectedConfiguration.IncludeTime;
 
-            // Set time components
             if (SelectedConfiguration.StartTime.HasValue)
             {
                 StartTimeHour = SelectedConfiguration.StartTime.Value.Hours;
@@ -620,15 +737,15 @@ namespace FileAuditor.WPF.ViewModels
         }
 
         // Update CreateConfiguration to include new properties
-        private CleanupConfiguration CreateConfiguration()
+        public CleanupConfiguration CreateConfiguration()
         {
             var config = new CleanupConfiguration
             {
                 TargetPaths = PathValidator.ParsePathsFromText(PathsText),
                 Target = SelectedTarget,
                 DateMode = SelectedDateMode,
-                DaysOld = DaysOld,
-                HoursOld = HoursOld, // ADD THIS
+                CutoffDate = CutoffDate,
+                CutoffTime = CutoffTime,
                 StartDate = StartDate,
                 EndDate = EndDate,
                 IncludeTime = IncludeTime,

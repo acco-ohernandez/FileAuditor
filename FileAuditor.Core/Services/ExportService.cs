@@ -130,11 +130,14 @@ namespace FileAuditor.Core.Services
                     // Try to read from "Path" column, fall back to first column
                     string? path = null;
 
-                    if (csv.Context.Reader.HeaderRecord?.Contains("Path") == true)
+                    var csvReader = csv.Context?.Reader;
+                    var headerRecord = csvReader?.HeaderRecord;
+
+                    if (headerRecord != null && headerRecord.Contains("Path"))
                     {
                         path = csv.GetField<string>("Path");
                     }
-                    else if (csv.Context.Reader.HeaderRecord?.Contains("path") == true)
+                    else if (headerRecord != null && headerRecord.Contains("path"))
                     {
                         path = csv.GetField<string>("path");
                     }

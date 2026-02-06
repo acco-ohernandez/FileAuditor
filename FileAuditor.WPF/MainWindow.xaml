@@ -563,40 +563,48 @@
 
                                     <!-- Older Than / Newer Than -->
                                     <StackPanel Visibility="{Binding SelectedDateMode, Converter={StaticResource DateModeToVisConverter}, ConverterParameter='OlderThan,NewerThan'}">
-                                        <Grid Margin="0,5">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
+                                        <TextBlock Margin="0,5,0,5" FontSize="11">
+        <Run Text="Select cutoff date and time."/>
+        <LineBreak/>
+        <Run Text="Files " FontWeight="SemiBold"/>
+        <Run Text="{Binding SelectedDateMode, Mode=OneWay}" FontWeight="SemiBold"/>
+        <Run Text=" this date/time will be identified." FontWeight="SemiBold"/>
+                                        </TextBlock>
 
-                                            <TextBlock Text="Days:" VerticalAlignment="Center" Width="50" Grid.Column="0"/>
-                                            <TextBox Text="{Binding DaysOld, UpdateSourceTrigger=PropertyChanged}"
-                         Width="80"
-                         Grid.Column="1"
-                         Margin="0,0,10,0"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                                            <TextBlock Text="Cutoff Date:" VerticalAlignment="Center" Width="80"/>
+                                            <DatePicker SelectedDate="{Binding CutoffDate}"
+                   Width="150"/>
+                                        </StackPanel>
 
-                                            <TextBlock Text="Hours:" VerticalAlignment="Center" Width="50" Grid.Column="2"/>
-                                            <TextBox Text="{Binding HoursOld, UpdateSourceTrigger=PropertyChanged}"
-                         Width="80"
-                         Grid.Column="3"
-                         Margin="0,0,10,0"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                                            <TextBlock Text="Cutoff Time:" VerticalAlignment="Center" Width="80"/>
+                                            <TextBox Text="{Binding CutoffTimeHour, UpdateSourceTrigger=PropertyChanged}"
+                 Width="40"
+                 MaxLength="2"
+                 Margin="0,0,5,0"/>
+                                            <TextBlock Text=":" VerticalAlignment="Center"/>
+                                            <TextBox Text="{Binding CutoffTimeMinute, UpdateSourceTrigger=PropertyChanged}"
+                 Width="40"
+                 MaxLength="2"
+                 Margin="5,0,10,0"/>
+                                            <TextBlock Text="(HH:MM 24-hour format)" 
+                  VerticalAlignment="Center"
+                  FontSize="10"
+                  Foreground="Gray"/>
+                                        </StackPanel>
 
-                                            <TextBlock VerticalAlignment="Center" 
-                           Grid.Column="4"
-                           FontSize="10"
-                           Foreground="Gray">
-                    <Run Text="(Items "/>
-                    <Run Text="{Binding SelectedDateMode, Mode=OneWay}"/>
-                    <Run Text=" "/>
-                    <Run Text="{Binding DaysOld, Mode=OneWay}"/>
-                    <Run Text=" days and "/>
-                    <Run Text="{Binding HoursOld, Mode=OneWay}"/>
-                    <Run Text=" hours)"/>
+                                        <Border Background="#E3F2FD" 
+            BorderBrush="#2196F3" 
+            BorderThickness="1" 
+            Padding="8" 
+            Margin="0,10,0,0"
+            CornerRadius="3">
+                                            <TextBlock TextWrapping="Wrap" FontSize="10">
+            <Run Text="Example: " FontWeight="Bold"/>
+            <Run Text="For 'OlderThan' mode, setting date to today and time to 13:00 will identify all files modified before 1:00 PM today."/>
                                             </TextBlock>
-                                        </Grid>
+                                        </Border>
                                     </StackPanel>
 
                                     <!-- Exact Date -->

@@ -292,40 +292,46 @@ namespace FileAuditor.Core.Services
 
             var now = DateTime.Now;
 
-            // Apply time component if enabled
-            DateTime effectiveStartDate = config.StartDate ?? now;
-            DateTime effectiveEndDate = config.EndDate ?? now;
-
-            if (config.IncludeTime)
-            {
-                if (config.StartTime.HasValue)
-                {
-                    effectiveStartDate = effectiveStartDate.Date.Add(config.StartTime.Value);
-                }
-                if (config.EndTime.HasValue)
-                {
-                    effectiveEndDate = effectiveEndDate.Date.Add(config.EndTime.Value);
-                }
-            }
-
             switch (config.DateMode)
             {
                 case CleanupDateMode.OlderThan:
-                    // Calculate cutoff date including hours
-                    var cutoffDate = now.Date.AddDays(-config.DaysOld).AddHours(-config.HoursOld);
-                    return lastModified < cutoffDate;
+                    if (!config.CutoffDate.HasValue)
+                        return false;
+
+                    var olderThanCutoff = config.CutoffDate.Value.Date;
+                    if (config.CutoffTime.HasValue)
+                    {
+                        olderThanCutoff = olderThanCutoff.Add(config.CutoffTime.Value);
+                    }
+
+                    return lastModified < olderThanCutoff;
 
                 case CleanupDateMode.NewerThan:
-                    // Calculate cutoff date including hours
-                    var cutoffDateNewer = now.Date.AddDays(-config.DaysOld).AddHours(-config.HoursOld);
-                    return lastModified > cutoffDateNewer;
+                    if (!config.CutoffDate.HasValue)
+                        return false;
+
+                    var newerThanCutoff = config.CutoffDate.Value.Date;
+                    if (config.CutoffTime.HasValue)
+                    {
+                        newerThanCutoff = newerThanCutoff.Add(config.CutoffTime.Value);
+                    }
+
+                    return lastModified > newerThanCutoff;
 
                 case CleanupDateMode.DateRange:
                     if (!config.StartDate.HasValue || !config.EndDate.HasValue)
                         return false;
 
+                    DateTime effectiveStartDate = config.StartDate.Value.Date;
+                    DateTime effectiveEndDate = config.EndDate.Value.Date;
+
                     if (config.IncludeTime)
                     {
+                        if (config.StartTime.HasValue)
+                            effectiveStartDate = effectiveStartDate.Add(config.StartTime.Value);
+                        if (config.EndTime.HasValue)
+                            effectiveEndDate = effectiveEndDate.Add(config.EndTime.Value);
+
                         return lastModified >= effectiveStartDate && lastModified <= effectiveEndDate;
                     }
                     else
@@ -338,16 +344,21 @@ namespace FileAuditor.Core.Services
                     if (!config.StartDate.HasValue)
                         return false;
 
+                    DateTime exactDate = config.StartDate.Value.Date;
+
                     if (config.IncludeTime)
                     {
+                        if (config.StartTime.HasValue)
+                            exactDate = exactDate.Add(config.StartTime.Value);
+
                         // Match exact date and time (within same hour/minute)
-                        return lastModified.Date == effectiveStartDate.Date &&
-                               lastModified.Hour == effectiveStartDate.Hour &&
-                               lastModified.Minute == effectiveStartDate.Minute;
+                        return lastModified.Date == exactDate.Date &&
+                               lastModified.Hour == exactDate.Hour &&
+                               lastModified.Minute == exactDate.Minute;
                     }
                     else
                     {
-                        return lastModified.Date == effectiveStartDate.Date;
+                        return lastModified.Date == exactDate.Date;
                     }
 
                 default:
