@@ -100,6 +100,9 @@ namespace FileAuditor.WPF.ViewModels
         [ObservableProperty]
         private CleanupConfiguration? _selectedConfiguration;
 
+        [ObservableProperty]
+        private int _hoursOld = 0;
+
         public ObservableCollection<CleanupTarget> CleanupTargets { get; } = new()
         {
             CleanupTarget.FilesOnly,
@@ -117,17 +120,20 @@ namespace FileAuditor.WPF.ViewModels
 
         // Add to constructor injection
         private readonly IScanHistoryService _historyService;
+        private readonly IExportService _exportService;  // ADD THIS
 
         public CleanupViewModel(
-            ICleanupService cleanupService,
-            IScanHistoryService historyService, // ADD THIS
-            ILogger<CleanupViewModel> logger)
+    ICleanupService cleanupService,
+    IScanHistoryService historyService,
+    IExportService exportService,  // ADD THIS PARAMETER
+    ILogger<CleanupViewModel> logger)
         {
             _cleanupService = cleanupService;
-            _historyService = historyService; // ADD THIS
+            _historyService = historyService;
+            _exportService = exportService;  // ADD THIS
             _logger = logger;
 
-            _ = LoadSavedConfigurations(); // Fire and forget - safe for UI initialization
+            _ = LoadSavedConfigurations();
         }
 
         [RelayCommand]
@@ -149,6 +155,36 @@ namespace FileAuditor.WPF.ViewModels
             }
 
             await Task.CompletedTask;
+        }
+
+        [RelayCommand]
+        private async Task ImportFromCsv()
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog  // Use fully qualified name
+            {
+                Filter = "CSV Files (*.csv)|*.csv|All Files (*.*)|*.*",
+                Title = "Import Paths from CSV"
+            };
+
+            if (dialog.ShowDialog() == true)  // This works with Microsoft.Win32.OpenFileDialog
+            {
+                try
+                {
+                    var paths = await _exportService.ImportPathsFromCsvAsync(dialog.FileName);  // Fixed: _exportService
+
+                    if (!string.IsNullOrWhiteSpace(PathsText))
+                        PathsText += Environment.NewLine;
+
+                    PathsText += string.Join(Environment.NewLine, paths);
+
+                    StatusMessage = $"Imported {paths.Count} path(s) from CSV";
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error importing CSV:\n\n{ex.Message}",
+                        "Import Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
         }
 
         [RelayCommand]
@@ -287,14 +323,54 @@ namespace FileAuditor.WPF.ViewModels
                 var deletedFiles = AnalysisResults.Sum(r => r.FilesDeleted);
                 var deletedFolders = AnalysisResults.Sum(r => r.FoldersDeleted);
 
-                StatusMessage = $"Cleanup complete: {deletedFiles} files, {deletedFolders} folders deleted";
+                // Auto-export to logs folder
+                var logsFolder = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "FileAuditor", "Logs");
 
-                MessageBox.Show($"Cleanup completed successfully!\n\n" +
-                               $"Deleted: {deletedFiles} files, {deletedFolders} folders",
-                    "Cleanup Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                Directory.CreateDirectory(logsFolder);
 
-                _logger.LogInformation("Cleanup completed. {Files} files, {Folders} folders deleted",
-                    deletedFiles, deletedFolders);
+                var autoExportPath = Path.Combine(logsFolder,
+                    $"cleanup_results_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
+
+                try
+                {
+                    using var writer = new StreamWriter(autoExportPath);
+                    await writer.WriteLineAsync("Path,Type,Last Modified,Size (bytes),Status,Error");
+
+                    foreach (var analysisResult in AnalysisResults)
+                    {
+                        foreach (var item in analysisResult.Items)
+                        {
+                            var type = item.IsDirectory ? "Folder" : "File";
+                            var status = item.WasDeleted ? "Deleted" : "Identified";
+                            var error = item.DeletionError ?? "";
+
+                            await writer.WriteLineAsync(
+                                $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{status},\"{error}\"");
+                        }
+                    }
+
+                    StatusMessage = $"Cleanup complete: {deletedFiles} files, {deletedFolders} folders deleted";
+
+                    MessageBox.Show($"Cleanup completed successfully!\n\n" +
+                                   $"Deleted: {deletedFiles} files, {deletedFolders} folders\n\n" +
+                                   $"Results exported to:\n{autoExportPath}\n\n" +
+                                   $"Logs folder: {logsFolder}",
+                        "Cleanup Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    _logger.LogInformation("Cleanup completed. {Files} files, {Folders} folders deleted. Results: {Path}",
+                        deletedFiles, deletedFolders, autoExportPath);
+                }
+                catch (Exception exportEx)
+                {
+                    _logger.LogError(exportEx, "Error auto-exporting cleanup results");
+
+                    MessageBox.Show($"Cleanup completed successfully!\n\n" +
+                                   $"Deleted: {deletedFiles} files, {deletedFolders} folders\n\n" +
+                                   $"Warning: Could not export results:\n{exportEx.Message}",
+                        "Cleanup Complete", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
             }
             catch (OperationCanceledException)
             {
@@ -315,6 +391,7 @@ namespace FileAuditor.WPF.ViewModels
                 _cancellationTokenSource = null;
             }
         }
+
 
         [RelayCommand]
         private void Cancel()
@@ -402,6 +479,7 @@ namespace FileAuditor.WPF.ViewModels
                     Target = SelectedTarget,
                     DateMode = SelectedDateMode,
                     DaysOld = DaysOld,
+                    HoursOld = HoursOld, // ADD THIS
                     StartDate = StartDate,
                     EndDate = EndDate,
                     IncludeTime = IncludeTime,
@@ -439,6 +517,7 @@ namespace FileAuditor.WPF.ViewModels
             SelectedTarget = SelectedConfiguration.Target;
             SelectedDateMode = SelectedConfiguration.DateMode;
             DaysOld = SelectedConfiguration.DaysOld;
+            HoursOld = SelectedConfiguration.HoursOld; // ADD THIS
             StartDate = SelectedConfiguration.StartDate;
             EndDate = SelectedConfiguration.EndDate;
             IncludeTime = SelectedConfiguration.IncludeTime;
@@ -484,6 +563,7 @@ namespace FileAuditor.WPF.ViewModels
                 Target = SelectedTarget,
                 DateMode = SelectedDateMode,
                 DaysOld = DaysOld,
+                HoursOld = HoursOld, // ADD THIS
                 StartDate = StartDate,
                 EndDate = EndDate,
                 IncludeTime = IncludeTime,

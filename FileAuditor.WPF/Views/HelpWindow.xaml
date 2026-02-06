@@ -241,47 +241,52 @@ C:\CORP BOX\Box\ProjectFiles
 
                         <TextBlock Text="Cleanup Workflow" Style="{StaticResource HelpSubHeader}"/>
                         <TextBlock Style="{StaticResource HelpText}">
-                            <Bold>Step 1: Configure</Bold><LineBreak/>
-                            • Enter paths to clean<LineBreak/>
-                            • Select what to clean (files, folders, or both)<LineBreak/>
-                            • Set date criteria<LineBreak/>
-                            • Configure file type filters if needed<LineBreak/>
-                            <LineBreak/>
-                            <Bold>Step 2: Analyze (Preview)</Bold><LineBreak/>
-                            • Ensure "Dry Run" is checked<LineBreak/>
-                            • Click "Analyze"<LineBreak/>
-                            • Review the results carefully<LineBreak/>
-                            • Check file count, folder count, and total size<LineBreak/>
-                            • Expand results to see individual items<LineBreak/>
-                            <LineBreak/>
-                            <Bold>Step 3: Execute (Optional)</Bold><LineBreak/>
-                            • If satisfied with preview, uncheck "Dry Run"<LineBreak/>
-                            • Click "Execute Cleanup"<LineBreak/>
-                            • Confirm when prompted<LineBreak/>
-                            • Monitor progress
+    <Bold>Step 1: Configure</Bold><LineBreak/>
+    • Enter paths to clean (manually or import from CSV)<LineBreak/>
+    • Select what to clean (files, folders, or both)<LineBreak/>
+    • Set date criteria (including days and hours for precision)<LineBreak/>
+    • Configure file type filters if needed<LineBreak/>
+    <LineBreak/>
+    <Bold>Step 2: Analyze (Preview)</Bold><LineBreak/>
+    • Ensure "Dry Run" is checked<LineBreak/>
+    • Click "Analyze"<LineBreak/>
+    • Review the results carefully<LineBreak/>
+    • Check file count, folder count, and total size<LineBreak/>
+    • Expand results to see individual items<LineBreak/>
+    • Export results for review if needed<LineBreak/>
+    <LineBreak/>
+    <Bold>Step 3: Execute (Optional)</Bold><LineBreak/>
+    • If satisfied with preview, uncheck "Dry Run"<LineBreak/>
+    • Click "Execute Cleanup"<LineBreak/>
+    • Confirm when prompted<LineBreak/>
+    • Monitor progress<LineBreak/>
+    • Results are automatically exported to the logs folder<LineBreak/>
+    • Location: %LocalAppData%\FileAuditor\Logs\cleanup_results_[timestamp].csv
                         </TextBlock>
 
                         <TextBlock Text="Date Criteria Modes" Style="{StaticResource HelpSubHeader}"/>
                         <TextBlock Style="{StaticResource HelpText}">
-                            <Bold>Any Date:</Bold><LineBreak/>
-                            No date filtering. Useful when combined with file type filters.<LineBreak/>
-                            Example: Delete all .tmp files regardless of age.<LineBreak/>
-                            <LineBreak/>
-                            <Bold>Older Than:</Bold><LineBreak/>
-                            Delete files/folders last modified more than X days ago.<LineBreak/>
-                            Example: Files older than 90 days.<LineBreak/>
-                            <LineBreak/>
-                            <Bold>Newer Than:</Bold><LineBreak/>
-                            Delete files/folders last modified less than X days ago.<LineBreak/>
-                            Example: Recent temp files (newer than 1 day).<LineBreak/>
-                            <LineBreak/>
-                            <Bold>Date Range:</Bold><LineBreak/>
-                            Delete files/folders modified within a specific date range.<LineBreak/>
-                            Example: All files from January 2025.<LineBreak/>
-                            <LineBreak/>
-                            <Bold>Exact Date:</Bold><LineBreak/>
-                            Delete files/folders modified on a specific date.<LineBreak/>
-                            Example: Files from 2025-01-15.
+    <Bold>Any Date:</Bold><LineBreak/>
+    No date filtering. Useful when combined with file type filters.<LineBreak/>
+    Example: Delete all .tmp files regardless of age.<LineBreak/>
+    <LineBreak/>
+    <Bold>Older Than:</Bold><LineBreak/>
+    Delete files/folders last modified more than X days and Y hours ago.<LineBreak/>
+    Example: Files older than 90 days, or files older than 0 days and 2 hours.<LineBreak/>
+    <LineBreak/>
+    <Bold>Newer Than:</Bold><LineBreak/>
+    Delete files/folders last modified less than X days and Y hours ago.<LineBreak/>
+    Example: Recent temp files (newer than 1 day), or very recent files (0 days and 2 hours).<LineBreak/>
+    <LineBreak/>
+    <Bold>Date Range:</Bold><LineBreak/>
+    Delete files/folders modified within a specific date range.<LineBreak/>
+    Example: All files from January 2025.<LineBreak/>
+    Optionally include specific start and end times.<LineBreak/>
+    <LineBreak/>
+    <Bold>Exact Date:</Bold><LineBreak/>
+    Delete files/folders modified on a specific date.<LineBreak/>
+    Example: Files from 2025-01-15.<LineBreak/>
+    Optionally include specific time (e.g., 14:30).
                         </TextBlock>
 
                         <TextBlock Text="Time Precision" Style="{StaticResource HelpSubHeader}"/>

@@ -311,10 +311,14 @@ namespace FileAuditor.Core.Services
             switch (config.DateMode)
             {
                 case CleanupDateMode.OlderThan:
-                    return (now - lastModified).TotalDays > config.DaysOld;
+                    // Calculate cutoff date including hours
+                    var cutoffDate = now.Date.AddDays(-config.DaysOld).AddHours(-config.HoursOld);
+                    return lastModified < cutoffDate;
 
                 case CleanupDateMode.NewerThan:
-                    return (now - lastModified).TotalDays < config.DaysOld;
+                    // Calculate cutoff date including hours
+                    var cutoffDateNewer = now.Date.AddDays(-config.DaysOld).AddHours(-config.HoursOld);
+                    return lastModified > cutoffDateNewer;
 
                 case CleanupDateMode.DateRange:
                     if (!config.StartDate.HasValue || !config.EndDate.HasValue)
@@ -350,7 +354,6 @@ namespace FileAuditor.Core.Services
                     return false;
             }
         }
-
 
         private void DeleteItems(
             CleanupResult result,

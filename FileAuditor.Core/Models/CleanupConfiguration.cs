@@ -13,6 +13,7 @@ namespace FileAuditor.Core.Models
         // Age criteria
         public CleanupDateMode DateMode { get; set; } = CleanupDateMode.OlderThan;
         public int DaysOld { get; set; } = 30; // For OlderThan/NewerThan mode
+        public int HoursOld { get; set; } = 0; // Additional hours for OlderThan/NewerThan mode
         public DateTime? StartDate { get; set; } // For DateRange/ExactDate mode
         public DateTime? EndDate { get; set; } // For DateRange mode
 
@@ -47,6 +48,7 @@ namespace FileAuditor.Core.Models
                 Target = Target,
                 DateMode = DateMode,
                 DaysOld = DaysOld,
+                HoursOld = HoursOld, // ADD THIS
                 StartDate = StartDate,
                 EndDate = EndDate,
                 IncludeTime = IncludeTime,
@@ -64,5 +66,6 @@ namespace FileAuditor.Core.Models
                 CreatedDate = CreatedDate
             };
         }
+
     }
 }

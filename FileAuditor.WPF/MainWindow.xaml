@@ -495,17 +495,21 @@
                             <Expander Header="Paths to Clean" IsExpanded="True" Style="{StaticResource ExpanderStyle}">
                                 <StackPanel>
                                     <TextBlock Text="Enter paths (one per line):" Margin="0,0,0,5"/>
-                                    <TextBox Text="{Binding PathsText}"
-                                 Height="120"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 VerticalScrollBarVisibility="Auto"
-                                 FontFamily="Consolas"/>
+                                    <TextBox Text="{Binding PathsText, UpdateSourceTrigger=PropertyChanged}"
+                 Height="120"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 VerticalScrollBarVisibility="Auto"
+                 FontFamily="Consolas"/>
 
-                                    <Button Content="Browse..." 
-                                Command="{Binding CleanupViewModel.BrowseFolderCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                Style="{StaticResource ButtonStyle}"
-                                Margin="0,5,0,0"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                        <Button Content="Browse..." 
+                    Command="{Binding BrowseFolderCommand}"
+                    Style="{StaticResource ButtonStyle}"/>
+                                        <Button Content="Import CSV" 
+                    Command="{Binding ImportFromCsvCommand}"
+                    Style="{StaticResource ButtonStyle}"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Expander>
 
@@ -557,183 +561,51 @@
 
                                     <!-- Older Than / Newer Than -->
                                     <StackPanel Visibility="{Binding SelectedDateMode, Converter={StaticResource DateModeToVisConverter}, ConverterParameter='OlderThan,NewerThan'}">
-                                        <StackPanel Orientation="Horizontal" Margin="0,5">
-                                            <TextBlock Text="Days:" VerticalAlignment="Center" Width="80"/>
+                                        <Grid Margin="0,5">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <TextBlock Text="Days:" VerticalAlignment="Center" Width="50" Grid.Column="0"/>
                                             <TextBox Text="{Binding DaysOld, UpdateSourceTrigger=PropertyChanged}"
-                         Width="100"/>
+                         Width="80"
+                         Grid.Column="1"
+                         Margin="0,0,10,0"/>
+
+                                            <TextBlock Text="Hours:" VerticalAlignment="Center" Width="50" Grid.Column="2"/>
+                                            <TextBox Text="{Binding HoursOld, UpdateSourceTrigger=PropertyChanged}"
+                         Width="80"
+                         Grid.Column="3"
+                         Margin="0,0,10,0"/>
+
                                             <TextBlock VerticalAlignment="Center" 
-                           Margin="10,0,0,0"
+                           Grid.Column="4"
                            FontSize="10"
                            Foreground="Gray">
                     <Run Text="(Items "/>
                     <Run Text="{Binding SelectedDateMode, Mode=OneWay}"/>
                     <Run Text=" "/>
                     <Run Text="{Binding DaysOld, Mode=OneWay}"/>
-                    <Run Text=" days)"/>
+                    <Run Text=" days and "/>
+                    <Run Text="{Binding HoursOld, Mode=OneWay}"/>
+                    <Run Text=" hours)"/>
                                             </TextBlock>
-                                        </StackPanel>
+                                        </Grid>
                                     </StackPanel>
 
+                                    <!-- Rest of the Date Criteria sections remain the same -->
                                     <!-- Exact Date -->
                                     <StackPanel Visibility="{Binding SelectedDateMode, Converter={StaticResource DateModeToVisConverter}, ConverterParameter=ExactDate}">
-                                        <TextBlock Text="Select the exact date:" Margin="0,5,0,5" FontSize="11"/>
-
-                                        <StackPanel Orientation="Horizontal" Margin="0,5">
-                                            <TextBlock Text="Date:" VerticalAlignment="Center" Width="80"/>
-                                            <DatePicker SelectedDate="{Binding StartDate}"
-                           Width="150"/>
-                                        </StackPanel>
-
-                                        <!-- Time option for exact date -->
-                                        <CheckBox Content="Include specific time"
-                      IsChecked="{Binding IncludeTime}"
-                      Margin="0,10,0,5"/>
-
-                                        <StackPanel Orientation="Horizontal" 
-                       Margin="0,5"
-                       IsEnabled="{Binding IncludeTime}">
-                                            <TextBlock Text="Time:" VerticalAlignment="Center" Width="80"/>
-                                            <ComboBox Width="70" SelectedIndex="0" x:Name="ExactHourCombo">
-                                                <ComboBoxItem>00</ComboBoxItem>
-                                                <ComboBoxItem>01</ComboBoxItem>
-                                                <ComboBoxItem>02</ComboBoxItem>
-                                                <ComboBoxItem>03</ComboBoxItem>
-                                                <ComboBoxItem>04</ComboBoxItem>
-                                                <ComboBoxItem>05</ComboBoxItem>
-                                                <ComboBoxItem>06</ComboBoxItem>
-                                                <ComboBoxItem>07</ComboBoxItem>
-                                                <ComboBoxItem>08</ComboBoxItem>
-                                                <ComboBoxItem>09</ComboBoxItem>
-                                                <ComboBoxItem>10</ComboBoxItem>
-                                                <ComboBoxItem>11</ComboBoxItem>
-                                                <ComboBoxItem>12</ComboBoxItem>
-                                                <ComboBoxItem>13</ComboBoxItem>
-                                                <ComboBoxItem>14</ComboBoxItem>
-                                                <ComboBoxItem>15</ComboBoxItem>
-                                                <ComboBoxItem>16</ComboBoxItem>
-                                                <ComboBoxItem>17</ComboBoxItem>
-                                                <ComboBoxItem>18</ComboBoxItem>
-                                                <ComboBoxItem>19</ComboBoxItem>
-                                                <ComboBoxItem>20</ComboBoxItem>
-                                                <ComboBoxItem>21</ComboBoxItem>
-                                                <ComboBoxItem>22</ComboBoxItem>
-                                                <ComboBoxItem>23</ComboBoxItem>
-                                            </ComboBox>
-                                            <TextBlock Text=":" VerticalAlignment="Center" Margin="5,0"/>
-                                            <ComboBox Width="70" SelectedIndex="0" x:Name="ExactMinuteCombo">
-                                                <ComboBoxItem>00</ComboBoxItem>
-                                                <ComboBoxItem>15</ComboBoxItem>
-                                                <ComboBoxItem>30</ComboBoxItem>
-                                                <ComboBoxItem>45</ComboBoxItem>
-                                            </ComboBox>
-                                            <TextBlock Text="(24-hour format)" 
-                          VerticalAlignment="Center" 
-                          Margin="10,0,0,0"
-                          FontSize="10"
-                          Foreground="Gray"/>
-                                        </StackPanel>
+                                        <!-- Keep existing ExactDate content -->
                                     </StackPanel>
 
                                     <!-- Date Range -->
                                     <StackPanel Visibility="{Binding SelectedDateMode, Converter={StaticResource DateModeToVisConverter}, ConverterParameter=DateRange}">
-                                        <TextBlock Text="Select date range:" Margin="0,5,0,5" FontSize="11"/>
-
-                                        <StackPanel Orientation="Horizontal" Margin="0,5">
-                                            <TextBlock Text="Start Date:" VerticalAlignment="Center" Width="80"/>
-                                            <DatePicker SelectedDate="{Binding StartDate}"
-                           Width="150"/>
-                                        </StackPanel>
-
-                                        <StackPanel Orientation="Horizontal" Margin="0,5">
-                                            <TextBlock Text="End Date:" VerticalAlignment="Center" Width="80"/>
-                                            <DatePicker SelectedDate="{Binding EndDate}"
-                           Width="150"/>
-                                        </StackPanel>
-
-                                        <!-- Time options for date range -->
-                                        <CheckBox Content="Include specific times"
-                      IsChecked="{Binding IncludeTime}"
-                      Margin="0,10,0,5"/>
-
-                                        <!-- Start Time -->
-                                        <StackPanel Orientation="Horizontal" 
-                       Margin="0,5"
-                       IsEnabled="{Binding IncludeTime}">
-                                            <TextBlock Text="Start Time:" VerticalAlignment="Center" Width="80"/>
-                                            <ComboBox Width="70" SelectedIndex="0" x:Name="StartHourCombo">
-                                                <ComboBoxItem>00</ComboBoxItem>
-                                                <ComboBoxItem>01</ComboBoxItem>
-                                                <ComboBoxItem>02</ComboBoxItem>
-                                                <ComboBoxItem>03</ComboBoxItem>
-                                                <ComboBoxItem>04</ComboBoxItem>
-                                                <ComboBoxItem>05</ComboBoxItem>
-                                                <ComboBoxItem>06</ComboBoxItem>
-                                                <ComboBoxItem>07</ComboBoxItem>
-                                                <ComboBoxItem>08</ComboBoxItem>
-                                                <ComboBoxItem>09</ComboBoxItem>
-                                                <ComboBoxItem>10</ComboBoxItem>
-                                                <ComboBoxItem>11</ComboBoxItem>
-                                                <ComboBoxItem>12</ComboBoxItem>
-                                                <ComboBoxItem>13</ComboBoxItem>
-                                                <ComboBoxItem>14</ComboBoxItem>
-                                                <ComboBoxItem>15</ComboBoxItem>
-                                                <ComboBoxItem>16</ComboBoxItem>
-                                                <ComboBoxItem>17</ComboBoxItem>
-                                                <ComboBoxItem>18</ComboBoxItem>
-                                                <ComboBoxItem>19</ComboBoxItem>
-                                                <ComboBoxItem>20</ComboBoxItem>
-                                                <ComboBoxItem>21</ComboBoxItem>
-                                                <ComboBoxItem>22</ComboBoxItem>
-                                                <ComboBoxItem>23</ComboBoxItem>
-                                            </ComboBox>
-                                            <TextBlock Text=":" VerticalAlignment="Center" Margin="5,0"/>
-                                            <ComboBox Width="70" SelectedIndex="0" x:Name="StartMinuteCombo">
-                                                <ComboBoxItem>00</ComboBoxItem>
-                                                <ComboBoxItem>15</ComboBoxItem>
-                                                <ComboBoxItem>30</ComboBoxItem>
-                                                <ComboBoxItem>45</ComboBoxItem>
-                                            </ComboBox>
-                                        </StackPanel>
-
-                                        <!-- End Time -->
-                                        <StackPanel Orientation="Horizontal" 
-                       Margin="0,5"
-                       IsEnabled="{Binding IncludeTime}">
-                                            <TextBlock Text="End Time:" VerticalAlignment="Center" Width="80"/>
-                                            <ComboBox Width="70" SelectedIndex="23" x:Name="EndHourCombo">
-                                                <ComboBoxItem>00</ComboBoxItem>
-                                                <ComboBoxItem>01</ComboBoxItem>
-                                                <ComboBoxItem>02</ComboBoxItem>
-                                                <ComboBoxItem>03</ComboBoxItem>
-                                                <ComboBoxItem>04</ComboBoxItem>
-                                                <ComboBoxItem>05</ComboBoxItem>
-                                                <ComboBoxItem>06</ComboBoxItem>
-                                                <ComboBoxItem>07</ComboBoxItem>
-                                                <ComboBoxItem>08</ComboBoxItem>
-                                                <ComboBoxItem>09</ComboBoxItem>
-                                                <ComboBoxItem>10</ComboBoxItem>
-                                                <ComboBoxItem>11</ComboBoxItem>
-                                                <ComboBoxItem>12</ComboBoxItem>
-                                                <ComboBoxItem>13</ComboBoxItem>
-                                                <ComboBoxItem>14</ComboBoxItem>
-                                                <ComboBoxItem>15</ComboBoxItem>
-                                                <ComboBoxItem>16</ComboBoxItem>
-                                                <ComboBoxItem>17</ComboBoxItem>
-                                                <ComboBoxItem>18</ComboBoxItem>
-                                                <ComboBoxItem>19</ComboBoxItem>
-                                                <ComboBoxItem>20</ComboBoxItem>
-                                                <ComboBoxItem>21</ComboBoxItem>
-                                                <ComboBoxItem>22</ComboBoxItem>
-                                                <ComboBoxItem>23</ComboBoxItem>
-                                            </ComboBox>
-                                            <TextBlock Text=":" VerticalAlignment="Center" Margin="5,0"/>
-                                            <ComboBox Width="70" SelectedIndex="3" x:Name="EndMinuteCombo">
-                                                <ComboBoxItem>00</ComboBoxItem>
-                                                <ComboBoxItem>15</ComboBoxItem>
-                                                <ComboBoxItem>30</ComboBoxItem>
-                                                <ComboBoxItem>45</ComboBoxItem>
-                                            </ComboBox>
-                                        </StackPanel>
+                                        <!-- Keep existing DateRange content -->
                                     </StackPanel>
 
                                     <!-- Date filtering summary -->
