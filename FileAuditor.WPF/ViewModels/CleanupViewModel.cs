@@ -103,6 +103,55 @@ namespace FileAuditor.WPF.ViewModels
         [ObservableProperty]
         private int _hoursOld = 0;
 
+
+        // Helper properties for time input
+        [ObservableProperty]
+        private int _startTimeHour = 0;
+
+        [ObservableProperty]
+        private int _startTimeMinute = 0;
+
+        [ObservableProperty]
+        private int _endTimeHour = 23;
+
+        [ObservableProperty]
+        private int _endTimeMinute = 59;
+
+        // Update StartTime when hour/minute changes
+        partial void OnStartTimeHourChanged(int value)
+        {
+            if (value >= 0 && value <= 23)
+            {
+                StartTime = new TimeSpan(value, StartTimeMinute, 0);
+            }
+        }
+
+        partial void OnStartTimeMinuteChanged(int value)
+        {
+            if (value >= 0 && value <= 59)
+            {
+                StartTime = new TimeSpan(StartTimeHour, value, 0);
+            }
+        }
+
+        partial void OnEndTimeHourChanged(int value)
+        {
+            if (value >= 0 && value <= 23)
+            {
+                EndTime = new TimeSpan(value, EndTimeMinute, 59);
+            }
+        }
+
+        partial void OnEndTimeMinuteChanged(int value)
+        {
+            if (value >= 0 && value <= 59)
+            {
+                EndTime = new TimeSpan(EndTimeHour, value, 59);
+            }
+        }
+
+
+
         public ObservableCollection<CleanupTarget> CleanupTargets { get; } = new()
         {
             CleanupTarget.FilesOnly,
@@ -124,10 +173,10 @@ namespace FileAuditor.WPF.ViewModels
         private readonly IExportService _exportService;  // ADD THIS
 
         public CleanupViewModel(
-    ICleanupService cleanupService,
-    IScanHistoryService historyService,
-    IExportService exportService,  // ADD THIS PARAMETER
-    ILogger<CleanupViewModel> logger)
+            ICleanupService cleanupService,
+            IScanHistoryService historyService,
+            IExportService exportService,  // ADD THIS PARAMETER
+            ILogger<CleanupViewModel> logger)
         {
             _cleanupService = cleanupService;
             _historyService = historyService;
@@ -518,12 +567,26 @@ namespace FileAuditor.WPF.ViewModels
             SelectedTarget = SelectedConfiguration.Target;
             SelectedDateMode = SelectedConfiguration.DateMode;
             DaysOld = SelectedConfiguration.DaysOld;
-            HoursOld = SelectedConfiguration.HoursOld; // ADD THIS
+            HoursOld = SelectedConfiguration.HoursOld;
             StartDate = SelectedConfiguration.StartDate;
             EndDate = SelectedConfiguration.EndDate;
             IncludeTime = SelectedConfiguration.IncludeTime;
-            StartTime = SelectedConfiguration.StartTime ?? new TimeSpan(0, 0, 0);
-            EndTime = SelectedConfiguration.EndTime ?? new TimeSpan(23, 59, 59);
+
+            // Set time components
+            if (SelectedConfiguration.StartTime.HasValue)
+            {
+                StartTimeHour = SelectedConfiguration.StartTime.Value.Hours;
+                StartTimeMinute = SelectedConfiguration.StartTime.Value.Minutes;
+                StartTime = SelectedConfiguration.StartTime.Value;
+            }
+
+            if (SelectedConfiguration.EndTime.HasValue)
+            {
+                EndTimeHour = SelectedConfiguration.EndTime.Value.Hours;
+                EndTimeMinute = SelectedConfiguration.EndTime.Value.Minutes;
+                EndTime = SelectedConfiguration.EndTime.Value;
+            }
+
             IsRecursive = SelectedConfiguration.IsRecursive;
             MaxDepth = SelectedConfiguration.MaxDepth;
             IncludeHiddenFiles = SelectedConfiguration.IncludeHiddenFiles;
@@ -537,6 +600,7 @@ namespace FileAuditor.WPF.ViewModels
             StatusMessage = $"Loaded configuration '{SelectedConfiguration.Name}'";
             await Task.CompletedTask;
         }
+
 
         private async Task LoadSavedConfigurations()
         {

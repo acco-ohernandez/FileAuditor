@@ -1,0 +1,31 @@
+{
+  "name": "Test Cleanup Config",
+  "targetPaths": [
+    {
+      "path": "C:\\Temp",
+      "isBoxDrivePath": false,
+      "isNetworkPath": false,
+      "isValid": true,
+      "validationError": null
+    }
+  ],
+  "target": "FilesOnly",
+  "dateMode": "OlderThan",
+  "daysOld": 30,
+  "hoursOld": 0,
+  "startDate": null,
+  "endDate": null,
+  "includeTime": false,
+  "startTime": null,
+  "endTime": null,
+  "isRecursive": true,
+  "maxDepth": null,
+  "includeHiddenFiles": false,
+  "dryRun": true,
+  "includeFileTypes": [],
+  "excludeFileTypes": [ ".exe", ".dll" ],
+  "excludePatterns": [],
+  "requireConfirmation": true,
+  "moveToRecycleBin": true,
+  "createdDate": "2026-02-05T10:00:00"
+}

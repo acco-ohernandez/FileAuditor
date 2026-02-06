@@ -82,6 +82,7 @@ namespace FileAuditor.WPF
         {
             MessageBox.Show(
                 "File Auditor v1.0\n\n" +
+                "By Orlando R Hernandez\n\n" +
                 "A comprehensive tool for auditing and cleaning file systems including:\n" +
                 "• Local drives\n" +
                 "• Network paths\n" +

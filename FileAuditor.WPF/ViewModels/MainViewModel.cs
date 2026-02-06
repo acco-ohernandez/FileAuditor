@@ -123,7 +123,7 @@ namespace FileAuditor.WPF.ViewModels
             _historyService = historyService;
             _logger = logger;
 
-            LoadSavedConfigurations();
+            _ = LoadSavedConfigurations(); // Fire-and-forget with discard
         }
 
         [RelayCommand]

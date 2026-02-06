@@ -95,7 +95,7 @@
             <TabItem Header="Scan">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="350"/>
+                        <ColumnDefinition Width="450"/>
                         <ColumnDefinition Width="5"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
@@ -483,7 +483,7 @@
                 </TabItem.DataContext>
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="350"/>
+                        <ColumnDefinition Width="450"/>
                         <ColumnDefinition Width="5"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
@@ -543,8 +543,8 @@
                                 <StackPanel>
                                     <TextBlock Text="Date Mode:" Margin="0,0,0,5" FontWeight="SemiBold"/>
                                     <ComboBox ItemsSource="{Binding DateModes}"
-                                              SelectedItem="{Binding SelectedDateMode}"
-                                              Margin="0,0,0,10"/>
+                  SelectedItem="{Binding SelectedDateMode}"
+                  Margin="0,0,0,10"/>
 
                                     <!-- Help Text -->
                                     <TextBlock TextWrapping="Wrap" FontSize="10" Foreground="Gray" Margin="0,0,0,10">
@@ -597,15 +597,102 @@
                                         </Grid>
                                     </StackPanel>
 
-                                    <!-- Rest of the Date Criteria sections remain the same -->
                                     <!-- Exact Date -->
                                     <StackPanel Visibility="{Binding SelectedDateMode, Converter={StaticResource DateModeToVisConverter}, ConverterParameter=ExactDate}">
-                                        <!-- Keep existing ExactDate content -->
+                                        <TextBlock Text="Select the exact date:" Margin="0,5,0,5" FontSize="11"/>
+
+                                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                                            <TextBlock Text="Date:" VerticalAlignment="Center" Width="80"/>
+                                            <DatePicker SelectedDate="{Binding StartDate}"
+                           Width="150"/>
+                                        </StackPanel>
+
+                                        <!-- Time option for exact date -->
+                                        <CheckBox Content="Include specific time"
+                      IsChecked="{Binding IncludeTime}"
+                      Margin="0,10,0,5"/>
+
+                                        <StackPanel Orientation="Horizontal" 
+                       Margin="0,5"
+                       IsEnabled="{Binding IncludeTime}">
+                                            <TextBlock Text="Time:" VerticalAlignment="Center" Width="80"/>
+                                            <TextBox Text="{Binding StartTimeHour, UpdateSourceTrigger=PropertyChanged}"
+                         Width="40"
+                         MaxLength="2"
+                         Margin="0,0,5,0"/>
+                                            <TextBlock Text=":" VerticalAlignment="Center"/>
+                                            <TextBox Text="{Binding StartTimeMinute, UpdateSourceTrigger=PropertyChanged}"
+                         Width="40"
+                         MaxLength="2"
+                         Margin="5,0,0,0"/>
+                                            <TextBlock Text="(HH:MM 24-hour format)" 
+                          VerticalAlignment="Center" 
+                          Margin="10,0,0,0"
+                          FontSize="10"
+                          Foreground="Gray"/>
+                                        </StackPanel>
                                     </StackPanel>
 
                                     <!-- Date Range -->
                                     <StackPanel Visibility="{Binding SelectedDateMode, Converter={StaticResource DateModeToVisConverter}, ConverterParameter=DateRange}">
-                                        <!-- Keep existing DateRange content -->
+                                        <TextBlock Text="Select date range:" Margin="0,5,0,5" FontSize="11"/>
+
+                                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                                            <TextBlock Text="Start Date:" VerticalAlignment="Center" Width="80"/>
+                                            <DatePicker SelectedDate="{Binding StartDate}"
+                           Width="150"/>
+                                        </StackPanel>
+
+                                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                                            <TextBlock Text="End Date:" VerticalAlignment="Center" Width="80"/>
+                                            <DatePicker SelectedDate="{Binding EndDate}"
+                           Width="150"/>
+                                        </StackPanel>
+
+                                        <!-- Time options for date range -->
+                                        <CheckBox Content="Include specific times"
+                      IsChecked="{Binding IncludeTime}"
+                      Margin="0,10,0,5"/>
+
+                                        <!-- Start Time -->
+                                        <StackPanel Orientation="Horizontal" 
+                       Margin="0,5"
+                       IsEnabled="{Binding IncludeTime}">
+                                            <TextBlock Text="Start Time:" VerticalAlignment="Center" Width="80"/>
+                                            <TextBox Text="{Binding StartTimeHour, UpdateSourceTrigger=PropertyChanged}"
+                         Width="40"
+                         MaxLength="2"
+                         Margin="0,0,5,0"/>
+                                            <TextBlock Text=":" VerticalAlignment="Center"/>
+                                            <TextBox Text="{Binding StartTimeMinute, UpdateSourceTrigger=PropertyChanged}"
+                         Width="40"
+                         MaxLength="2"
+                         Margin="5,0,10,0"/>
+                                            <TextBlock Text="(24-hour format)" 
+                          VerticalAlignment="Center"
+                          FontSize="10"
+                          Foreground="Gray"/>
+                                        </StackPanel>
+
+                                        <!-- End Time -->
+                                        <StackPanel Orientation="Horizontal" 
+                       Margin="0,5"
+                       IsEnabled="{Binding IncludeTime}">
+                                            <TextBlock Text="End Time:" VerticalAlignment="Center" Width="80"/>
+                                            <TextBox Text="{Binding EndTimeHour, UpdateSourceTrigger=PropertyChanged}"
+                         Width="40"
+                         MaxLength="2"
+                         Margin="0,0,5,0"/>
+                                            <TextBlock Text=":" VerticalAlignment="Center"/>
+                                            <TextBox Text="{Binding EndTimeMinute, UpdateSourceTrigger=PropertyChanged}"
+                         Width="40"
+                         MaxLength="2"
+                         Margin="5,0,10,0"/>
+                                            <TextBlock Text="(24-hour format)" 
+                          VerticalAlignment="Center"
+                          FontSize="10"
+                          Foreground="Gray"/>
+                                        </StackPanel>
                                     </StackPanel>
 
                                     <!-- Date filtering summary -->
@@ -620,7 +707,6 @@
                                     </Border>
                                 </StackPanel>
                             </Expander>
-
 
                             <!-- File Type Filters -->
                             <Expander Header="File Type Filters" IsExpanded="False" Style="{StaticResource ExpanderStyle}">
