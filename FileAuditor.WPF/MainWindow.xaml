@@ -648,13 +648,13 @@
                                         <TextBlock Text="Select date range:" Margin="0,5,0,5" FontSize="11"/>
 
                                         <StackPanel Orientation="Horizontal" Margin="0,5">
-                                            <TextBlock Text="Start Date:" VerticalAlignment="Center" Width="80"/>
+                                            <TextBlock Text="Past Date:" VerticalAlignment="Center" Width="80"/>
                                             <DatePicker SelectedDate="{Binding StartDate}"
                            Width="150"/>
                                         </StackPanel>
 
                                         <StackPanel Orientation="Horizontal" Margin="0,5">
-                                            <TextBlock Text="End Date:" VerticalAlignment="Center" Width="80"/>
+                                            <TextBlock Text="Recent Date:" VerticalAlignment="Center" Width="80"/>
                                             <DatePicker SelectedDate="{Binding EndDate}"
                            Width="150"/>
                                         </StackPanel>
