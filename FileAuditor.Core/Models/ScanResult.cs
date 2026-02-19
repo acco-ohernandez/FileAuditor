@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 using FileAuditor.Core.Enums;
 
 namespace FileAuditor.Core.Models
@@ -8,10 +10,37 @@ namespace FileAuditor.Core.Models
         public string Path { get; set; } = string.Empty;
         public ScanStatus Status { get; set; } = ScanStatus.Pending;
 
-        // Counts
-        public long TotalFolders { get; set; }
-        public long TotalFiles { get; set; }
-        public long TotalSizeBytes { get; set; }
+        // Counts — use Interlocked-safe long fields so concurrent recursive calls are safe.
+        private long _totalFolders;
+        private long _totalFiles;
+        private long _totalSizeBytes;
+
+        public long TotalFolders
+        {
+            get => Interlocked.Read(ref _totalFolders);
+            set => Interlocked.Exchange(ref _totalFolders, value);
+        }
+
+        public long TotalFiles
+        {
+            get => Interlocked.Read(ref _totalFiles);
+            set => Interlocked.Exchange(ref _totalFiles, value);
+        }
+
+        public long TotalSizeBytes
+        {
+            get => Interlocked.Read(ref _totalSizeBytes);
+            set => Interlocked.Exchange(ref _totalSizeBytes, value);
+        }
+
+        /// <summary>Increments TotalFiles atomically.</summary>
+        public void IncrementFiles() => Interlocked.Increment(ref _totalFiles);
+
+        /// <summary>Adds <paramref name="bytes"/> to TotalSizeBytes atomically.</summary>
+        public void AddBytes(long bytes) => Interlocked.Add(ref _totalSizeBytes, bytes);
+
+        /// <summary>Increments TotalFolders atomically.</summary>
+        public void IncrementFolders() => Interlocked.Increment(ref _totalFolders);
 
         // File type breakdown
         public FileTypeBreakdown? FileTypeBreakdown { get; set; }
@@ -21,9 +50,13 @@ namespace FileAuditor.Core.Models
         public DateTime? EndTime { get; set; }
         public TimeSpan Duration => EndTime.HasValue ? EndTime.Value - StartTime : TimeSpan.Zero;
 
-        // Errors
-        public List<ScanError> Errors { get; set; } = new();
-        public bool HasErrors => Errors.Any();
+        // Errors — ConcurrentBag is safe for concurrent Add() from multiple threads.
+        private readonly ConcurrentBag<ScanError> _errors = new();
+        public IReadOnlyCollection<ScanError> Errors => _errors;
+        public bool HasErrors => !_errors.IsEmpty;
+
+        /// <summary>Thread-safe error recording.</summary>
+        public void AddError(ScanError error) => _errors.Add(error);
 
         // Path information
         public bool IsBoxDrivePath { get; set; }
@@ -48,16 +81,18 @@ namespace FileAuditor.Core.Models
             const long GB = MB * 1024;
             const long TB = GB * 1024;
 
-            if (TotalSizeBytes >= TB)
-                return $"{TotalSizeBytes / (double)TB:F2} TB";
-            if (TotalSizeBytes >= GB)
-                return $"{TotalSizeBytes / (double)GB:F2} GB";
-            if (TotalSizeBytes >= MB)
-                return $"{TotalSizeBytes / (double)MB:F2} MB";
-            if (TotalSizeBytes >= KB)
-                return $"{TotalSizeBytes / (double)KB:F2} KB";
+            var bytes = TotalSizeBytes;
 
-            return $"{TotalSizeBytes} bytes";
+            if (bytes >= TB)
+                return $"{bytes / (double)TB:F2} TB";
+            if (bytes >= GB)
+                return $"{bytes / (double)GB:F2} GB";
+            if (bytes >= MB)
+                return $"{bytes / (double)MB:F2} MB";
+            if (bytes >= KB)
+                return $"{bytes / (double)KB:F2} KB";
+
+            return $"{bytes} bytes";
         }
 
         public string GetStatusDescription()
@@ -67,7 +102,7 @@ namespace FileAuditor.Core.Models
                 ScanStatus.Pending => "Waiting to start",
                 ScanStatus.Running => CurrentOperation ?? "Scanning...",
                 ScanStatus.Completed => $"Completed in {Duration.TotalSeconds:F1}s",
-                ScanStatus.Failed => $"Failed: {Errors.FirstOrDefault()?.Message ?? "Unknown error"}",
+                ScanStatus.Failed => $"Failed: {_errors.FirstOrDefault()?.Message ?? "Unknown error"}",
                 ScanStatus.Cancelled => "Cancelled by user",
                 _ => "Unknown"
             };

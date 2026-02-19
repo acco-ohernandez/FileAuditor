@@ -16,6 +16,26 @@ namespace FileAuditor.Core.Models
             DeterminePathType();
         }
 
+        /// <summary>
+        /// Creates a deep copy of this PathItem. Use instead of sharing references across cloned collections.
+        /// </summary>
+        public PathItem Clone()
+        {
+            return new PathItem
+            {
+                Path = Path,
+                IsBoxDrivePath = IsBoxDrivePath,
+                IsNetworkPath = IsNetworkPath,
+                IsValid = IsValid,
+                ValidationError = ValidationError
+            };
+        }
+
+        /// <summary>
+        /// Populates IsBoxDrivePath and IsNetworkPath from the current Path value.
+        /// Called by the string constructor. Not called during JSON deserialization —
+        /// use <see cref="RefreshPathType"/> after deserializing if metadata is needed.
+        /// </summary>
         private void DeterminePathType()
         {
             if (string.IsNullOrWhiteSpace(Path))
@@ -29,6 +49,19 @@ namespace FileAuditor.Core.Models
             IsNetworkPath = Path.StartsWith(@"\\");
 
             // Use FileSystemHelper for Box Drive detection
+            IsBoxDrivePath = Helpers.FileSystemHelper.IsBoxDrivePath(Path);
+        }
+
+        /// <summary>
+        /// Re-evaluates IsBoxDrivePath and IsNetworkPath. Call this after JSON deserialization
+        /// when the metadata fields may be stale (e.g. Box Drive path was empty at save time).
+        /// </summary>
+        public void RefreshPathType()
+        {
+            if (string.IsNullOrWhiteSpace(Path))
+                return;
+
+            IsNetworkPath = Path.StartsWith(@"\\");
             IsBoxDrivePath = Helpers.FileSystemHelper.IsBoxDrivePath(Path);
         }
     }

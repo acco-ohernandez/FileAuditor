@@ -24,7 +24,7 @@ namespace FileAuditor.Core.Models
         public string? Name { get; set; }
         public DateTime CreatedDate { get; set; } = DateTime.Now;
 
-        // CLI/Output settings (NEW)
+        // CLI/Output settings
         public string OutputFormat { get; set; } = "csv"; // "csv" or "json"
         public string OutputPath { get; set; } = "scan_results_{timestamp}.csv";
         public bool EnableHistory { get; set; } = true;
@@ -35,7 +35,7 @@ namespace FileAuditor.Core.Models
         {
             return new ScanConfiguration
             {
-                Paths = new List<PathItem>(Paths),
+                Paths = Paths.Select(p => p.Clone()).ToList(),
                 CountMode = CountMode,
                 IsRecursive = IsRecursive,
                 MaxDepth = MaxDepth,

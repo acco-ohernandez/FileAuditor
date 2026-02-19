@@ -10,26 +10,24 @@ namespace FileAuditor.Core.Services
     {
         private readonly string _historyDirectory;
         private readonly string _configDirectory;
+        private readonly string _cleanupConfigDirectory;
         private readonly ILogger<ScanHistoryService>? _logger;
         private readonly JsonSerializerOptions _jsonOptions;
-        private readonly string _cleanupConfigDirectory;
 
         public ScanHistoryService(ILogger<ScanHistoryService>? logger = null)
         {
             _logger = logger;
 
-            // Store in AppData/Local
             var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var appFolder = Path.Combine(appDataPath, "FileAuditor");
 
             _historyDirectory = Path.Combine(appFolder, "History");
             _configDirectory = Path.Combine(appFolder, "Configurations");
-            _cleanupConfigDirectory = Path.Combine(appFolder, "CleanupConfigurations"); // NEW
+            _cleanupConfigDirectory = Path.Combine(appFolder, "CleanupConfigurations");
 
-            // Create directories if they don't exist
             Directory.CreateDirectory(_historyDirectory);
             Directory.CreateDirectory(_configDirectory);
-            Directory.CreateDirectory(_cleanupConfigDirectory); // NEW
+            Directory.CreateDirectory(_cleanupConfigDirectory);
 
             _jsonOptions = new JsonSerializerOptions
             {
@@ -65,13 +63,14 @@ namespace FileAuditor.Core.Services
                     .OrderByDescending(f => File.GetCreationTime(f))
                     .ToList();
 
-                if (limit.HasValue)
-                    files = files.Take(limit.Value).ToList();
-
                 var results = new List<ScanResult>();
 
                 foreach (var file in files)
                 {
+                    // Apply limit after the path filter so callers always get `limit` matching records.
+                    if (limit.HasValue && results.Count >= limit.Value)
+                        break;
+
                     try
                     {
                         var json = await File.ReadAllTextAsync(file);
@@ -79,7 +78,6 @@ namespace FileAuditor.Core.Services
 
                         if (result != null)
                         {
-                            // Filter by path if specified
                             if (string.IsNullOrEmpty(path) ||
                                 result.Path.Equals(path, StringComparison.OrdinalIgnoreCase))
                             {
@@ -121,7 +119,7 @@ namespace FileAuditor.Core.Services
             }
         }
 
-        public async Task DeleteScanAsync(Guid id)
+        public Task DeleteScanAsync(Guid id)
         {
             try
             {
@@ -133,7 +131,7 @@ namespace FileAuditor.Core.Services
                     _logger?.LogInformation("Deleted scan: {Id}", id);
                 }
 
-                await Task.CompletedTask;
+                return Task.CompletedTask;
             }
             catch (Exception ex)
             {
@@ -142,7 +140,7 @@ namespace FileAuditor.Core.Services
             }
         }
 
-        public async Task DeleteOldScansAsync(int daysToKeep)
+        public Task DeleteOldScansAsync(int daysToKeep)
         {
             try
             {
@@ -161,7 +159,7 @@ namespace FileAuditor.Core.Services
                 }
 
                 _logger?.LogInformation("Deleted {Count} old scan(s) older than {Days} days", deletedCount, daysToKeep);
-                await Task.CompletedTask;
+                return Task.CompletedTask;
             }
             catch (Exception ex)
             {
@@ -263,7 +261,7 @@ namespace FileAuditor.Core.Services
             }
         }
 
-        public async Task DeleteConfigurationAsync(string name)
+        public Task DeleteConfigurationAsync(string name)
         {
             try
             {
@@ -276,7 +274,7 @@ namespace FileAuditor.Core.Services
                     _logger?.LogInformation("Deleted configuration: {Name}", name);
                 }
 
-                await Task.CompletedTask;
+                return Task.CompletedTask;
             }
             catch (Exception ex)
             {
@@ -285,13 +283,6 @@ namespace FileAuditor.Core.Services
             }
         }
 
-        private string SanitizeFileName(string fileName)
-        {
-            var invalidChars = Path.GetInvalidFileNameChars();
-            return string.Join("_", fileName.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
-        }
-
-        // New methods
         public async Task SaveCleanupConfigurationAsync(CleanupConfiguration config)
         {
             try
@@ -366,7 +357,7 @@ namespace FileAuditor.Core.Services
             }
         }
 
-        public async Task DeleteCleanupConfigurationAsync(string name)
+        public Task DeleteCleanupConfigurationAsync(string name)
         {
             try
             {
@@ -379,7 +370,7 @@ namespace FileAuditor.Core.Services
                     _logger?.LogInformation("Deleted cleanup configuration: {Name}", name);
                 }
 
-                await Task.CompletedTask;
+                return Task.CompletedTask;
             }
             catch (Exception ex)
             {
@@ -388,5 +379,10 @@ namespace FileAuditor.Core.Services
             }
         }
 
+        private string SanitizeFileName(string fileName)
+        {
+            var invalidChars = Path.GetInvalidFileNameChars();
+            return string.Join("_", fileName.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries));
+        }
     }
 }

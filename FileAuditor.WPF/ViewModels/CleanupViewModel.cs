@@ -22,7 +22,14 @@ namespace FileAuditor.WPF.ViewModels
     {
         private readonly ICleanupService _cleanupService;
         private readonly ILogger<CleanupViewModel> _logger;
-        private CancellationTokenSource? _cancellationTokenSource;
+
+        // Separate CTS per operation so Analyze and ExecuteCleanup never share one.
+        private CancellationTokenSource? _analyzeCancellationTokenSource;
+        private CancellationTokenSource? _executeCancellationTokenSource;
+
+        // Snapshot of the configuration used during the most recent Analyze run.
+        // ExecuteCleanup re-uses this so it executes exactly what was previewed.
+        private CleanupConfiguration? _lastAnalysisConfig;
 
         [ObservableProperty]
         private string _pathsText = string.Empty;
@@ -115,14 +122,6 @@ namespace FileAuditor.WPF.ViewModels
         [ObservableProperty]
         private int _endTimeMinute = 59;
 
-        // CHANGED: Replace DaysOld with StartDate/EndDate and IncludeTime
-        //[ObservableProperty]
-        //private int _daysOld = 30;
-        // ADD THIS: HoursOld for finer control in OlderThan/NewerThan mode
-        //[ObservableProperty]
-        //private int _hoursOld = 0;
-
-        // ADDED these instead:
         [ObservableProperty]
         private DateTime? _cutoffDate = DateTime.Now.AddDays(-30);
 
@@ -173,7 +172,7 @@ namespace FileAuditor.WPF.ViewModels
         {
             if (value >= 0 && value <= 23)
             {
-                EndTime = new TimeSpan(value, EndTimeMinute, 59);
+                EndTime = new TimeSpan(value, EndTimeMinute, 0);
             }
         }
 
@@ -181,7 +180,7 @@ namespace FileAuditor.WPF.ViewModels
         {
             if (value >= 0 && value <= 59)
             {
-                EndTime = new TimeSpan(EndTimeHour, value, 59);
+                EndTime = new TimeSpan(EndTimeHour, value, 0);
             }
         }
 
@@ -222,7 +221,7 @@ namespace FileAuditor.WPF.ViewModels
         }
 
         [RelayCommand]
-        private async Task BrowseFolder()
+        private void BrowseFolder()
         {
             var dialog = new System.Windows.Forms.FolderBrowserDialog
             {
@@ -238,8 +237,6 @@ namespace FileAuditor.WPF.ViewModels
 
                 PathsText += dialog.SelectedPath;
             }
-
-            await Task.CompletedTask;
         }
 
         [RelayCommand]
@@ -260,7 +257,7 @@ namespace FileAuditor.WPF.ViewModels
                     if (!string.IsNullOrWhiteSpace(PathsText))
                         PathsText += Environment.NewLine;
 
-                    PathsText += string.Join(Environment.NewLine, paths);
+                    PathsText += string.Join(Environment.NewLine, paths.Select(p => p.Path));
 
                     StatusMessage = $"Imported {paths.Count} path(s) from CSV";
                 }
@@ -290,6 +287,7 @@ namespace FileAuditor.WPF.ViewModels
                 IsAnalyzing = true;
                 StatusMessage = "Analyzing paths...";
                 AnalysisResults.Clear();
+                _lastAnalysisConfig = null;
 
                 var paths = PathsText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(p => p.Trim())
@@ -297,9 +295,11 @@ namespace FileAuditor.WPF.ViewModels
                     .Distinct()
                     .ToList();
 
+                // Snapshot config now so Execute uses exactly what was analyzed.
                 var config = CreateConfiguration();
+                _lastAnalysisConfig = config;
 
-                _cancellationTokenSource = new CancellationTokenSource();
+                _analyzeCancellationTokenSource = new CancellationTokenSource();
 
                 var progress = new Progress<CleanupProgress>(p =>
                 {
@@ -309,7 +309,7 @@ namespace FileAuditor.WPF.ViewModels
                 var results = await _cleanupService.AnalyzeMultiplePathsAsync(
                     paths,
                     config,
-                    _cancellationTokenSource.Token,
+                    _analyzeCancellationTokenSource.Token,
                     progress);
 
                 foreach (var result in results)
@@ -341,15 +341,19 @@ namespace FileAuditor.WPF.ViewModels
             finally
             {
                 IsAnalyzing = false;
-                _cancellationTokenSource?.Dispose();
-                _cancellationTokenSource = null;
+                var cts = _analyzeCancellationTokenSource;
+                _analyzeCancellationTokenSource = null;
+                cts?.Dispose();
             }
         }
 
         [RelayCommand]
         private async Task ExecuteCleanup()
         {
-            if (!AnalysisResults.Any())
+            if (IsAnalyzing || IsDeleting)
+                return;
+
+            if (!AnalysisResults.Any() || _lastAnalysisConfig == null)
             {
                 MessageBox.Show("Please run an analysis first.", "No Analysis",
                     MessageBoxButton.OK, MessageBoxImage.Information);
@@ -388,8 +392,9 @@ namespace FileAuditor.WPF.ViewModels
                 IsDeleting = true;
                 StatusMessage = "Deleting items...";
 
-                var config = CreateConfiguration();
-                _cancellationTokenSource = new CancellationTokenSource();
+                // Use the config snapshot from Analyze so Execute is consistent with the preview.
+                var config = _lastAnalysisConfig!;
+                _executeCancellationTokenSource = new CancellationTokenSource();
 
                 var progress = new Progress<CleanupProgress>(p =>
                 {
@@ -401,7 +406,7 @@ namespace FileAuditor.WPF.ViewModels
                     await _cleanupService.ExecuteCleanupAsync(
                         analysisResult,
                         config,
-                        _cancellationTokenSource.Token,
+                        _executeCancellationTokenSource.Token,
                         progress);
                 }
 
@@ -472,8 +477,9 @@ namespace FileAuditor.WPF.ViewModels
             finally
             {
                 IsDeleting = false;
-                _cancellationTokenSource?.Dispose();
-                _cancellationTokenSource = null;
+                var cts = _executeCancellationTokenSource;
+                _executeCancellationTokenSource = null;
+                cts?.Dispose();
             }
         }
 
@@ -481,7 +487,9 @@ namespace FileAuditor.WPF.ViewModels
         [RelayCommand]
         private void Cancel()
         {
-            _cancellationTokenSource?.Cancel();
+            // Cancel whichever operation is currently running.
+            _analyzeCancellationTokenSource?.Cancel();
+            _executeCancellationTokenSource?.Cancel();
             StatusMessage = "Cancelling operation...";
         }
 
@@ -669,7 +677,7 @@ namespace FileAuditor.WPF.ViewModels
         }
 
         [RelayCommand]
-        private async Task LoadConfiguration()
+        private void LoadConfiguration()
         {
             if (SelectedConfiguration == null)
                 return;
@@ -715,7 +723,6 @@ namespace FileAuditor.WPF.ViewModels
             ExcludePatterns = string.Join("\n", SelectedConfiguration.ExcludePatterns);
 
             StatusMessage = $"Loaded configuration '{SelectedConfiguration.Name}'";
-            await Task.CompletedTask;
         }
 
 

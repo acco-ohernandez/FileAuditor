@@ -77,7 +77,7 @@ namespace FileAuditor.Core.Services
                 if (!pathItem.IsValid)
                 {
                     result.Status = ScanStatus.Failed;
-                    result.Errors.Add(new ScanError
+                    result.AddError(new ScanError
                     {
                         ErrorType = ErrorType.InvalidPath,
                         Path = pathItem.Path,
@@ -91,7 +91,7 @@ namespace FileAuditor.Core.Services
                 if (pathItem.IsNetworkPath && !PathValidator.IsNetworkPathAvailable(pathItem.Path))
                 {
                     result.Status = ScanStatus.Failed;
-                    result.Errors.Add(new ScanError
+                    result.AddError(new ScanError
                     {
                         ErrorType = ErrorType.NetworkPathOffline,
                         Path = pathItem.Path,
@@ -113,7 +113,7 @@ namespace FileAuditor.Core.Services
 
                     if (!refreshed)
                     {
-                        result.Errors.Add(new ScanError
+                        result.AddError(new ScanError
                         {
                             ErrorType = ErrorType.BoxDriveError,
                             Path = pathItem.Path,
@@ -142,7 +142,7 @@ namespace FileAuditor.Core.Services
             catch (UnauthorizedAccessException ex)
             {
                 result.Status = ScanStatus.Failed;
-                result.Errors.Add(new ScanError
+                result.AddError(new ScanError
                 {
                     ErrorType = ErrorType.AccessDenied,
                     Path = pathItem.Path,
@@ -154,7 +154,7 @@ namespace FileAuditor.Core.Services
             catch (Exception ex)
             {
                 result.Status = ScanStatus.Failed;
-                result.Errors.Add(new ScanError
+                result.AddError(new ScanError
                 {
                     ErrorType = ErrorType.UnknownError,
                     Path = pathItem.Path,
@@ -189,11 +189,31 @@ namespace FileAuditor.Core.Services
 
             try
             {
+                // Enumerate subdirectories once and reuse for both counting and recursion (M-2 fix).
+                // A single enumeration avoids double filesystem I/O and ensures the folder count
+                // and the recursion list are consistent.
+                List<string>? subdirectories = null;
+
+                bool needSubdirs = config.IsRecursive
+                    || config.CountMode == CountMode.FoldersOnly
+                    || config.CountMode == CountMode.Both;
+
+                if (needSubdirs)
+                {
+                    // Note: Directory.EnumerateDirectories is synchronous I/O. Task.Run offloads it
+                    // to a thread pool thread to keep the calling context free (intentional pattern).
+                    subdirectories = await Task.Run(
+                        () => Directory.EnumerateDirectories(path, "*", enumOptions).ToList(),
+                        cancellationToken);
+                }
+
                 // Count files if needed
                 if (config.CountMode == CountMode.FilesOnly || config.CountMode == CountMode.Both)
                 {
                     await Task.Run(() =>
                     {
+                        // Note: Directory.EnumerateFiles is synchronous I/O offloaded via Task.Run
+                        // to avoid blocking the UI/calling thread (intentional — not true async I/O).
                         var files = Directory.EnumerateFiles(path, "*", enumOptions);
 
                         foreach (var file in files)
@@ -209,19 +229,17 @@ namespace FileAuditor.Core.Services
                             if (config.ExcludeFileTypes.Contains(extension))
                                 continue;
 
-                            result.TotalFiles++;
+                            // Thread-safe increment via Interlocked (C-1 fix)
+                            result.IncrementFiles();
 
-                            // Add to file type breakdown
-                            if (result.FileTypeBreakdown != null)
-                            {
-                                result.FileTypeBreakdown.AddFileType(extension);
-                            }
+                            // Thread-safe AddFileType via ConcurrentDictionary (C-2 fix)
+                            result.FileTypeBreakdown?.AddFileType(extension);
 
-                            // Add file size
+                            // Add file size atomically
                             try
                             {
                                 var fileInfo = new FileInfo(file);
-                                result.TotalSizeBytes += fileInfo.Length;
+                                result.AddBytes(fileInfo.Length);
                             }
                             catch
                             {
@@ -231,19 +249,17 @@ namespace FileAuditor.Core.Services
                     }, cancellationToken);
                 }
 
-                // Count folders
+                // Count folders using the already-enumerated list (avoids second enumeration)
                 if (config.CountMode == CountMode.FoldersOnly || config.CountMode == CountMode.Both)
                 {
-                    await Task.Run(() =>
+                    if (subdirectories != null)
                     {
-                        var directories = Directory.EnumerateDirectories(path, "*", enumOptions);
-
-                        foreach (var directory in directories)
+                        foreach (var _ in subdirectories)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
-                            result.TotalFolders++;
+                            result.IncrementFolders();
                         }
-                    }, cancellationToken);
+                    }
                 }
 
                 // Report progress
@@ -256,10 +272,8 @@ namespace FileAuditor.Core.Services
                 });
 
                 // Recurse into subdirectories if enabled
-                if (config.IsRecursive)
+                if (config.IsRecursive && subdirectories != null)
                 {
-                    var subdirectories = Directory.EnumerateDirectories(path, "*", enumOptions).ToList();
-
                     foreach (var subdirectory in subdirectories)
                     {
                         try
@@ -274,7 +288,7 @@ namespace FileAuditor.Core.Services
                         }
                         catch (UnauthorizedAccessException ex)
                         {
-                            result.Errors.Add(new ScanError
+                            result.AddError(new ScanError
                             {
                                 ErrorType = ErrorType.AccessDenied,
                                 Path = subdirectory,
@@ -284,7 +298,7 @@ namespace FileAuditor.Core.Services
                         }
                         catch (DirectoryNotFoundException ex)
                         {
-                            result.Errors.Add(new ScanError
+                            result.AddError(new ScanError
                             {
                                 ErrorType = ErrorType.PathNotFound,
                                 Path = subdirectory,
@@ -294,7 +308,7 @@ namespace FileAuditor.Core.Services
                         }
                         catch (Exception ex)
                         {
-                            result.Errors.Add(new ScanError
+                            result.AddError(new ScanError
                             {
                                 ErrorType = ErrorType.UnknownError,
                                 Path = subdirectory,
@@ -307,7 +321,7 @@ namespace FileAuditor.Core.Services
             }
             catch (Exception ex)
             {
-                result.Errors.Add(new ScanError
+                result.AddError(new ScanError
                 {
                     ErrorType = ErrorType.UnknownError,
                     Path = path,

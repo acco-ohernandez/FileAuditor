@@ -45,7 +45,7 @@ namespace FileAuditor.WPF.ViewModels
         private bool _isRecursive = true;
 
         [ObservableProperty]
-        private int? _maxDepth = 1;
+        private int? _maxDepth = null;
 
         [ObservableProperty]
         private int _parallelThreadCount = 4;
@@ -261,7 +261,7 @@ namespace FileAuditor.WPF.ViewModels
         }
 
         [RelayCommand]
-        private async Task BrowseFolder()
+        private void BrowseFolder()
         {
             var dialog = new System.Windows.Forms.FolderBrowserDialog
             {
@@ -277,8 +277,6 @@ namespace FileAuditor.WPF.ViewModels
 
                 PathsText += dialog.SelectedPath;
             }
-
-            await Task.CompletedTask;
         }
 
         [RelayCommand]
@@ -423,7 +421,7 @@ namespace FileAuditor.WPF.ViewModels
         }
 
         [RelayCommand]
-        private async Task LoadConfiguration()
+        private void LoadConfiguration()
         {
             if (SelectedConfiguration == null)
                 return;
@@ -448,7 +446,6 @@ namespace FileAuditor.WPF.ViewModels
             ComparisonRetentionDays = SelectedConfiguration.ComparisonRetentionDays;
 
             StatusMessage = $"Loaded configuration '{SelectedConfiguration.Name}'";
-            await Task.CompletedTask;
         }
 
         private async Task LoadSavedConfigurations()

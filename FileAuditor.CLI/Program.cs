@@ -211,10 +211,6 @@ namespace FileAuditor.CLI
 
                 Log.Information("Configuration loaded successfully");
                 Log.Information("Paths to clean: {PathCount}", config.TargetPaths.Count);
-                Log.Information("Configuration loaded successfully");
-                Log.Information("Paths to clean: {PathCount}", config.TargetPaths.Count);
-
-                // ADD THIS BLOCK:
                 Log.Information("Target: {Target}", config.Target);
                 Log.Information("Date Mode: {DateMode}", config.DateMode);
 
@@ -258,9 +254,6 @@ namespace FileAuditor.CLI
 
                 Log.Information("Dry Run Mode: {DryRun}", config.DryRun);
                 Log.Information("Move to Recycle Bin: {RecycleBin}", config.MoveToRecycleBin);
-                // END OF ADDED BLOCK
-
-                Log.Information("Dry Run Mode: {DryRun}", config.DryRun);
 
                 if (config.DryRun)
                 {

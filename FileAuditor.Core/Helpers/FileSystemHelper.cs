@@ -4,8 +4,13 @@ namespace FileAuditor.Core.Helpers
 {
     public static class FileSystemHelper
     {
-        // Cache the Box Drive path so we don't hit registry repeatedly
+        // Cache the Box Drive path so we don't hit registry repeatedly.
+        // _cachedBoxDrivePath == null means "not yet looked up".
+        // _cachedBoxDrivePath == string.Empty means "looked up, not found".
+        // Cache expires after 5 minutes so a Box Drive install during the session is detected.
         private static string? _cachedBoxDrivePath = null;
+        private static DateTime _cacheTimestamp = DateTime.MinValue;
+        private static readonly TimeSpan CacheLifetime = TimeSpan.FromMinutes(5);
         private static readonly object _cacheLock = new object();
 
         // Win32 API for checking file attributes
@@ -35,21 +40,21 @@ namespace FileAuditor.Core.Helpers
             }
         }
 
-        public static bool TryHydrateFile(string path, int timeoutSeconds = 5)
+        public static async Task<bool> TryHydrateFileAsync(string path, int timeoutSeconds = 5)
         {
             try
             {
                 // Opening the file will trigger Box Drive to download it
                 using var fs = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
 
-                // Wait for file to become available
+                // Poll using Task.Delay to avoid blocking a thread pool thread (M-7 fix).
                 var startTime = DateTime.Now;
                 while (IsFileOffline(path))
                 {
                     if ((DateTime.Now - startTime).TotalSeconds > timeoutSeconds)
                         return false;
 
-                    Thread.Sleep(100);
+                    await Task.Delay(100).ConfigureAwait(false);
                 }
 
                 return true;
@@ -60,7 +65,11 @@ namespace FileAuditor.Core.Helpers
             }
         }
 
-        public static bool TryHydrateDirectory(string path, int timeoutSeconds = 30)
+        /// <summary>Synchronous wrapper kept for backwards compatibility — prefer <see cref="TryHydrateFileAsync"/>.</summary>
+        public static bool TryHydrateFile(string path, int timeoutSeconds = 5)
+            => TryHydrateFileAsync(path, timeoutSeconds).GetAwaiter().GetResult();
+
+        public static async Task<bool> TryHydrateDirectoryAsync(string path, int timeoutSeconds = 30)
         {
             try
             {
@@ -84,7 +93,7 @@ namespace FileAuditor.Core.Helpers
                     }
 
                     if (!allHydrated)
-                        Thread.Sleep(500);
+                        await Task.Delay(500).ConfigureAwait(false);
                 }
 
                 return allHydrated;
@@ -94,6 +103,10 @@ namespace FileAuditor.Core.Helpers
                 return false;
             }
         }
+
+        /// <summary>Synchronous wrapper kept for backwards compatibility — prefer <see cref="TryHydrateDirectoryAsync"/>.</summary>
+        public static bool TryHydrateDirectory(string path, int timeoutSeconds = 30)
+            => TryHydrateDirectoryAsync(path, timeoutSeconds).GetAwaiter().GetResult();
 
         public static EnumerationOptions GetEnumerationOptions(bool includeHidden, bool ignoreInaccessible = true)
         {
@@ -154,8 +167,8 @@ namespace FileAuditor.Core.Helpers
         {
             lock (_cacheLock)
             {
-                // Return cached value if available
-                if (_cachedBoxDrivePath != null)
+                // Return cached value if it has been set and has not expired.
+                if (_cachedBoxDrivePath != null && DateTime.Now - _cacheTimestamp < CacheLifetime)
                     return _cachedBoxDrivePath;
 
                 try
@@ -168,6 +181,7 @@ namespace FileAuditor.Core.Helpers
                         if (!string.IsNullOrEmpty(syncPath))
                         {
                             _cachedBoxDrivePath = syncPath;
+                            _cacheTimestamp = DateTime.Now;
                             return syncPath;
                         }
                     }
@@ -180,6 +194,7 @@ namespace FileAuditor.Core.Helpers
                         if (!string.IsNullOrEmpty(boxPath))
                         {
                             _cachedBoxDrivePath = boxPath;
+                            _cacheTimestamp = DateTime.Now;
                             return boxPath;
                         }
                     }
@@ -190,6 +205,7 @@ namespace FileAuditor.Core.Helpers
                 }
 
                 _cachedBoxDrivePath = string.Empty;
+                _cacheTimestamp = DateTime.Now;
                 return string.Empty;
             }
         }
@@ -235,11 +251,16 @@ namespace FileAuditor.Core.Helpers
         /// <summary>
         /// Clears the cached Box Drive path, forcing a registry re-read on next check
         /// </summary>
+        /// <summary>
+        /// Clears the cached Box Drive path, forcing a registry re-read on the next check.
+        /// The cache also expires automatically after 5 minutes without needing an explicit clear.
+        /// </summary>
         public static void ClearBoxDrivePathCache()
         {
             lock (_cacheLock)
             {
                 _cachedBoxDrivePath = null;
+                _cacheTimestamp = DateTime.MinValue;
             }
         }
     }

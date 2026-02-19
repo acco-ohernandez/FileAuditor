@@ -45,10 +45,11 @@ namespace FileAuditor.Core.Helpers
                 return pathItem;
             }
 
-            // Check if we have access
+            // Check if we have access — use EnumerateDirectories().Any() instead of GetDirectories()
+            // to avoid allocating a full array just for an access check (L-4 fix).
             try
             {
-                _ = Directory.GetDirectories(pathItem.Path);
+                _ = Directory.EnumerateDirectories(pathItem.Path).Any();
                 pathItem.IsValid = true;
             }
             catch (UnauthorizedAccessException)
