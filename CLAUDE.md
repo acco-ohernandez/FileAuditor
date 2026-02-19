@@ -34,7 +34,9 @@ FileAuditor.sln
 - **Logging**: Serilog is used everywhere via the `Microsoft.Extensions.Logging` abstraction (`ILogger<T>`). Never use `Console.WriteLine` or `Debug.WriteLine` for logging in non-test code.
 - **Async throughout**: All scan and cleanup operations are async. The Core services use `Parallel.ForEachAsync` for parallel path processing. Do not block on async calls (no `.Result` or `.Wait()`).
 - **No UI logic in Core**: `FileAuditor.Core` has no reference to WPF or any UI framework. Keep it that way.
-- **Cancellation**: All long-running operations accept a `CancellationToken`. The ViewModels manage `CancellationTokenSource` for start/cancel.
+- **Cancellation**: All long-running operations accept a `CancellationToken`. `MainViewModel` manages one `CancellationTokenSource` for the scan. `CleanupViewModel` manages two separate sources — `_analyzeCancellationTokenSource` and `_executeCancellationTokenSource` — so Analyze and ExecuteCleanup never share a token. The Cancel command cancels both.
+- **Thread safety in Core**: `ScanResult` counters (`TotalFiles`, `TotalFolders`, `TotalSizeBytes`) are backed by `Interlocked` operations. `ScanResult.Errors` uses `ConcurrentBag<ScanError>`. `FileTypeBreakdown` uses `ConcurrentDictionary`. Use the `IncrementFiles()`, `IncrementFolders()`, `AddBytes()`, and `AddError()` helpers — do not assign to the counter properties directly from concurrent code.
+- **MaxDepth default**: Both `MainViewModel` and `CleanupViewModel` default `MaxDepth` to `1` (one level deep). Users opt into deeper scans explicitly. `ScanConfiguration.MaxDepth` defaults to `null` (unlimited) for CLI/programmatic use.
 
 ---
 
@@ -115,6 +117,8 @@ Cancelled
 - Fallback paths: `C:\CORP BOX`, `B:\`
 - Offline file detection uses `GetFileAttributes` via P/Invoke in `FileSystemHelper.cs`; checks `FILE_ATTRIBUTE_OFFLINE` (0x1000) and `FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS` (0x400000)
 - Hydration is triggered by opening the file to force a cloud download before scanning. Configurable timeout via `boxDriveRefreshTimeoutSeconds`.
+- The registry path cache expires automatically after **5 minutes**, so a Box Drive installation that occurs mid-session is detected on the next scan without needing an app restart. Call `FileSystemHelper.ClearBoxDrivePathCache()` to force an immediate re-read.
+- Hydration uses `TryHydrateFileAsync` / `TryHydrateDirectoryAsync` (async, `Task.Delay`-based polling). Synchronous wrappers `TryHydrateFile` / `TryHydrateDirectory` are kept for backwards compatibility but should not be called from async contexts.
 
 ---
 
@@ -176,3 +180,8 @@ Configs saved from the WPF app are valid CLI configs (same JSON schema for both 
 - Do not use `Console.WriteLine` in the WPF project.
 - Do not add new value converters unless a binding genuinely cannot be expressed as a ViewModel property.
 - Do not skip the two-phase Analyze → Execute pattern for cleanup operations. Users must see a preview before any files are deleted.
+- Do not use `result.TotalFiles++` or `result.Errors.Add(...)` directly in `FileScanner` — use `result.IncrementFiles()`, `result.IncrementFolders()`, `result.AddBytes()`, and `result.AddError()` to maintain thread safety.
+- Do not call `Clone()` on `ScanConfiguration` or `CleanupConfiguration` and then mutate a `PathItem` inside — `Clone()` deep-copies `PathItem` instances via `PathItem.Clone()`.
+- Do not enumerate subdirectories twice in `FileScanner` — the single enumeration result is reused for both counting and recursion.
+- Do not use `async Task` on methods that have no `await` — use synchronous signatures instead (see `BrowseFolder`, `LoadConfiguration` in both ViewModels).
+- Do not call `GetScanHistoryAsync` with both a `path` filter and a `limit` expecting `limit` total records — the limit is applied after the path filter, so `limit` controls matching records, not total records read.

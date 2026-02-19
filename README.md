@@ -66,6 +66,7 @@ dotnet publish FileAuditor.WPF/FileAuditor.WPF.csproj -c Release -r win-x64 --se
 - Detects cloud-only (offline/stub) files using Win32 `GetFileAttributes` — checks `FILE_ATTRIBUTE_OFFLINE` and `FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS`
 - Triggers file and directory hydration (download from cloud) before scanning for accurate counts
 - Configurable hydration timeout
+- Registry path cache expires after 5 minutes — Box Drive installed mid-session is detected automatically without an app restart
 
 ### Cleanup
 

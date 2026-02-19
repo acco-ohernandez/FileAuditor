@@ -52,7 +52,7 @@ namespace FileAuditor.WPF.ViewModels
         private bool _isRecursive = true;
 
         [ObservableProperty]
-        private int? _maxDepth = null;
+        private int? _maxDepth = 1;
 
         [ObservableProperty]
         private bool _includeHiddenFiles = false;
