@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(del:*)",
+      "Bash(Remove-Item \"C:\\\\Visual Studio Files\\\\FileAuditor\\\\FileAuditor.Core\\\\Class1.cs\")",
+      "Bash(dotnet build:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
