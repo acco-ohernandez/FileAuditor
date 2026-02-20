@@ -202,20 +202,25 @@ namespace FileAuditor.Core.Services
                 {
                     // Note: Directory.EnumerateDirectories is synchronous I/O. Task.Run offloads it
                     // to a thread pool thread to keep the calling context free (intentional pattern).
-                    subdirectories = await Task.Run(
+                    // Box Drive can throw IOException("A retry should be performed") when a folder is
+                    // in a transitional sync state. We retry up to 3 times with a short delay before
+                    // recording it as a recoverable error and continuing the scan.
+                    subdirectories = await EnumerateWithRetryAsync(
                         () => Directory.EnumerateDirectories(path, "*", enumOptions).ToList(),
-                        cancellationToken);
+                        path, result, cancellationToken);
                 }
 
                 // Count files if needed
                 if (config.CountMode == CountMode.FilesOnly || config.CountMode == CountMode.Both)
                 {
+                    // Use the same retry helper for file enumeration — Box Drive can raise
+                    // the transient retry IOException here too.
+                    var files = await EnumerateWithRetryAsync(
+                        () => Directory.EnumerateFiles(path, "*", enumOptions).ToList(),
+                        path, result, cancellationToken);
+
                     await Task.Run(() =>
                     {
-                        // Note: Directory.EnumerateFiles is synchronous I/O offloaded via Task.Run
-                        // to avoid blocking the UI/calling thread (intentional — not true async I/O).
-                        var files = Directory.EnumerateFiles(path, "*", enumOptions);
-
                         foreach (var file in files)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
@@ -330,5 +335,68 @@ namespace FileAuditor.Core.Services
                 });
             }
         }
+
+        /// <summary>
+        /// Executes a synchronous filesystem enumeration on a thread pool thread, retrying up to
+        /// <paramref name="maxRetries"/> times when Box Drive throws a transient
+        /// <see cref="IOException"/> with "retry should be performed" (HResult 0x800704D5).
+        /// On final failure the error is recorded in <paramref name="result"/> and an empty list
+        /// is returned so the scan can continue with the remaining paths.
+        /// </summary>
+        private async Task<List<string>> EnumerateWithRetryAsync(
+            Func<List<string>> enumerate,
+            string path,
+            ScanResult result,
+            CancellationToken cancellationToken,
+            int maxRetries = 3,
+            int retryDelayMs = 500)
+        {
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    return await Task.Run(enumerate, cancellationToken);
+                }
+                catch (IOException ex) when (IsBoxDriveRetryError(ex) && attempt < maxRetries)
+                {
+                    _logger?.LogWarning(
+                        "Box Drive transient error on attempt {Attempt}/{Max} for '{Path}': {Message} — retrying in {Delay}ms",
+                        attempt, maxRetries, path, ex.Message, retryDelayMs);
+
+                    await Task.Delay(retryDelayMs, cancellationToken);
+                }
+            }
+
+            // Final attempt outside the loop so the exception is caught and recorded cleanly.
+            try
+            {
+                return await Task.Run(enumerate, cancellationToken);
+            }
+            catch (IOException ex)
+            {
+                _logger?.LogWarning(
+                    "Box Drive transient error persisted after {Max} retries for '{Path}': {Message} — skipping directory",
+                    maxRetries, path, ex.Message);
+
+                result.AddError(new ScanError
+                {
+                    ErrorType = ErrorType.BoxDriveError,
+                    Path = path,
+                    Message = $"Skipped after {maxRetries} retries: {ex.Message}",
+                    Exception = ex
+                });
+
+                return new List<string>();
+            }
+        }
+
+        /// <summary>
+        /// Returns true for the specific IOException Box Drive raises when a path is in a
+        /// transitional sync state and the caller should retry (HResult 0x800704D5).
+        /// </summary>
+        private static bool IsBoxDriveRetryError(IOException ex)
+            => ex.HResult == unchecked((int)0x800704D5)
+               || (ex.Message?.Contains("retry should be performed", StringComparison.OrdinalIgnoreCase) ?? false);
     }
 }
