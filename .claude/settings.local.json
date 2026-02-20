@@ -10,7 +10,8 @@
       "Bash(Select-String:*)",
       "Bash(findstr:*)",
       "Bash(python:*)",
-      "Bash(Out-String)"
+      "Bash(Out-String)",
+      "Bash(Remove-Item \"C:\\\\Visual Studio Files\\\\FileAuditor\\\\.git\\\\index.lock\" -Force)"
     ]
   }
 }
