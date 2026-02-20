@@ -5,7 +5,8 @@
       "Bash(Remove-Item \"C:\\\\Visual Studio Files\\\\FileAuditor\\\\FileAuditor.Core\\\\Class1.cs\")",
       "Bash(dotnet build:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(performed\"\\) when a folder is in a transitional sync state. Previously\nthis bubbled up unhandled, causing VS to pause in debug mode and the\nscan to fail in release.\n\nChanges:\n- Added EnumerateWithRetryAsync\\(\\) helper that retries a filesystem\n  enumeration up to 3 times \\(500ms apart\\) on the specific Box Drive\n  transient error before recording a recoverable ScanError and returning\n  an empty list so the scan continues\n- Added IsBoxDriveRetryError\\(\\) to identify the error by HResult\n  \\(0x800704D5\\) or message content for robustness\n- Both subdirectory and file enumeration in ScanDirectoryRecursiveAsync\n  now use EnumerateWithRetryAsync instead of raw Task.Run + ToList\\(\\)\n- Retries are logged at Warning level; final failures are recorded in\n  ScanResult.Errors as BoxDriveError and the directory is skipped cleanly\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }
