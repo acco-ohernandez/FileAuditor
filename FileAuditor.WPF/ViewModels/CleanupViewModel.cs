@@ -772,6 +772,17 @@ namespace FileAuditor.WPF.ViewModels
 
         public CleanupConfiguration CreateConfiguration()
         {
+            // Always recompute TimeSpans from the 12-hour string fields immediately before
+            // building the config.  This guarantees the correct 24-hour value is captured
+            // even if a ComboBox selection fired a change notification that the source
+            // generator hadn't yet propagated through the property-change chain.
+            if (TryParse12HourTime(CutoffTimeHour, CutoffTimeMinute, CutoffTimeAmPm, out var cutoffTs))
+                CutoffTime = cutoffTs;
+            if (TryParse12HourTime(StartTimeHour, StartTimeMinute, StartTimeAmPm, out var startTs))
+                StartTime = startTs;
+            if (TryParse12HourTime(EndTimeHour, EndTimeMinute, EndTimeAmPm, out var endTs))
+                EndTime = endTs;
+
             var config = new CleanupConfiguration
             {
                 TargetPaths = PathValidator.ParsePathsFromText(PathsText),

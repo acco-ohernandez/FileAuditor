@@ -927,9 +927,9 @@
                                                                         </Style>
                                                                     </DataGridTextColumn.ElementStyle>
                                                                 </DataGridTextColumn>
-                                                                <DataGridTextColumn Header="Last Modified" 
-                                                                       Binding="{Binding LastModified, StringFormat='yyyy-MM-dd HH:mm:ss'}" 
-                                                                       Width="150"/>
+                                                                <DataGridTextColumn Header="Last Modified"
+                                                                       Binding="{Binding LastModified, StringFormat='yyyy-MM-dd hh:mm:ss tt'}"
+                                                                       Width="170"/>
                                                                 <DataGridTextColumn Header="Size" Binding="{Binding SizeBytes}" Width="100">
                                                                     <DataGridTextColumn.ElementStyle>
                                                                         <Style TargetType="TextBlock">
