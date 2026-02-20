@@ -83,7 +83,6 @@ namespace FileAuditor.WPF.ViewModels
         [ObservableProperty]
         private ScanConfiguration? _selectedConfiguration;
 
-        // new proerties
         [ObservableProperty]
         private string _outputFormat = "csv";
 

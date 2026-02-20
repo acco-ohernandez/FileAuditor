@@ -1,11 +1,10 @@
 <Window x:Class="FileAuditor.WPF.Views.HelpWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="File Auditor Help" 
-        Height="700" 
+        Title="File Auditor Help"
+        Height="700"
         Width="900"
         WindowStartupLocation="CenterScreen">
-    <!--Icon="/Resources/icon.ico">-->
 
     <Window.Resources>
         <Style x:Key="HelpSectionHeader" TargetType="TextBlock">
@@ -68,15 +67,15 @@
                         <TextBlock Text="Welcome to File Auditor" Style="{StaticResource HelpSectionHeader}"/>
 
                         <TextBlock Style="{StaticResource HelpText}">
-                            File Auditor is a comprehensive tool for scanning and managing files across local drives, 
-                            network shares, and Box Drive folders. It provides detailed reports on folder/file counts, 
+                            File Auditor is a comprehensive tool for scanning and managing files across local drives,
+                            network shares, and Box Drive folders. It provides detailed reports on folder/file counts,
                             sizes, and file type distributions, plus powerful cleanup capabilities.
                         </TextBlock>
 
                         <TextBlock Text="Key Features" Style="{StaticResource HelpSubHeader}"/>
                         <TextBlock Style="{StaticResource HelpText}">
                             • <Bold>Scan:</Bold> Audit local, network, and Box Drive paths<LineBreak/>
-                            • <Bold>Cleanup:</Bold> Safely delete old files based on flexible date criteria<LineBreak/>
+                            • <Bold>Cleanup:</Bold> Safely delete old files based on flexible date and time criteria<LineBreak/>
                             • <Bold>Reports:</Bold> Export results to CSV or JSON<LineBreak/>
                             • <Bold>History:</Bold> Track scans over time and compare changes<LineBreak/>
                             • <Bold>CLI:</Bold> Automate tasks via command line and Task Scheduler<LineBreak/>
@@ -93,7 +92,7 @@
                             <LineBreak/>
                             <Bold>2. Cleanup Tab:</Bold><LineBreak/>
                             • Enter paths to clean<LineBreak/>
-                            • Set date criteria (e.g., older than 30 days)<LineBreak/>
+                            • Set date criteria (e.g., older than a specific date)<LineBreak/>
                             • Click "Analyze" to preview<LineBreak/>
                             • Review results carefully<LineBreak/>
                             • Click "Execute Cleanup" to delete (if not in dry-run mode)
@@ -103,8 +102,8 @@
                             <StackPanel>
                                 <TextBlock FontWeight="Bold" Margin="0,0,0,5">💡 Pro Tip</TextBlock>
                                 <TextBlock TextWrapping="Wrap">
-                                    Save your configurations! Both Scan and Cleanup tabs allow you to save 
-                                    settings for reuse. These configurations can also be used with the CLI 
+                                    Save your configurations! Both Scan and Cleanup tabs allow you to save
+                                    settings for reuse. These configurations can also be used with the CLI
                                     for automation and scheduled tasks.
                                 </TextBlock>
                             </StackPanel>
@@ -142,7 +141,7 @@ C:\CORP BOX\Box\ProjectFiles
 
                         <TextBlock Style="{StaticResource HelpText}">
                             • <Bold>Local drives:</Bold> C:\, D:\, etc.<LineBreak/>
-                            • <Bold>Network shares:</Bold> \\\\server\share<LineBreak/>
+                            • <Bold>Network shares:</Bold> \\server\share<LineBreak/>
                             • <Bold>Box Drive:</Bold> Automatically detected from registry
                         </TextBlock>
 
@@ -156,9 +155,9 @@ C:\CORP BOX\Box\ProjectFiles
                             <LineBreak/>
                             <Bold>Recursive Scan:</Bold><LineBreak/>
                             When enabled, scans all subdirectories. Use Max Depth to limit how deep to scan.<LineBreak/>
-                            • <Bold>Max Depth 1:</Bold> Only the specified folder<LineBreak/>
+                            • <Bold>Max Depth 1:</Bold> Only the specified folder (default)<LineBreak/>
                             • <Bold>Max Depth 2:</Bold> Folder + immediate subfolders<LineBreak/>
-                            • <Bold>Empty:</Bold> Unlimited depth<LineBreak/>
+                            • <Bold>Empty / blank:</Bold> Unlimited depth<LineBreak/>
                             <LineBreak/>
                             <Bold>Parallel Threads:</Bold><LineBreak/>
                             Number of concurrent scanning threads (1-16). Higher = faster but more CPU/disk usage.<LineBreak/>
@@ -174,7 +173,7 @@ C:\CORP BOX\Box\ProjectFiles
                         <TextBlock Text="Box Drive Options" Style="{StaticResource HelpSubHeader}"/>
                         <TextBlock Style="{StaticResource HelpText}">
                             <Bold>Enable Box Drive Refresh:</Bold><LineBreak/>
-                            Automatically hydrate (download) offline files before scanning. This ensures accurate 
+                            Automatically hydrate (download) offline files before scanning. This ensures accurate
                             file counts and sizes for Box Drive folders.<LineBreak/>
                             <LineBreak/>
                             <Bold>Timeout:</Bold> How long to wait for offline files to download (seconds).
@@ -244,13 +243,13 @@ C:\CORP BOX\Box\ProjectFiles
     <Bold>Step 1: Configure</Bold><LineBreak/>
     • Enter paths to clean (manually or import from CSV)<LineBreak/>
     • Select what to clean (files, folders, or both)<LineBreak/>
-    • Set date criteria (including days and hours for precision)<LineBreak/>
+    • Set date criteria with a specific cutoff date and optional time<LineBreak/>
     • Configure file type filters if needed<LineBreak/>
     <LineBreak/>
     <Bold>Step 2: Analyze (Preview)</Bold><LineBreak/>
     • Ensure "Dry Run" is checked<LineBreak/>
     • Click "Analyze"<LineBreak/>
-    • Review the results carefully<LineBreak/>
+    • Review the results carefully — Last Modified times show in 12-hour AM/PM format<LineBreak/>
     • Check file count, folder count, and total size<LineBreak/>
     • Expand results to see individual items<LineBreak/>
     • Export results for review if needed<LineBreak/>
@@ -268,33 +267,48 @@ C:\CORP BOX\Box\ProjectFiles
                         <TextBlock Style="{StaticResource HelpText}">
     <Bold>Any Date:</Bold><LineBreak/>
     No date filtering. Useful when combined with file type filters.<LineBreak/>
-    Example: Delete all .tmp files regardless of age.<LineBreak/>
+    Example: Delete all .tmp files regardless of when they were modified.<LineBreak/>
     <LineBreak/>
     <Bold>Older Than:</Bold><LineBreak/>
-    Delete files/folders last modified more than X days and Y hours ago.<LineBreak/>
-    Example: Files older than 90 days, or files older than 0 days and 2 hours.<LineBreak/>
+    Delete files/folders whose Last Modified date+time is before the specified cutoff.<LineBreak/>
+    • Set the <Bold>Cutoff Date</Bold> using the date picker<LineBreak/>
+    • Set the <Bold>Cutoff Time</Bold> using the hour, minute, and AM/PM fields<LineBreak/>
+    Example: Cutoff Date = 1/1/2026, Cutoff Time = 12:00 AM → deletes everything modified before midnight on January 1, 2026.<LineBreak/>
+    Example: Cutoff Date = 2/19/2026, Cutoff Time = 5:00 PM → deletes everything modified before 5:00 PM today.<LineBreak/>
     <LineBreak/>
     <Bold>Newer Than:</Bold><LineBreak/>
-    Delete files/folders last modified less than X days and Y hours ago.<LineBreak/>
-    Example: Recent temp files (newer than 1 day), or very recent files (0 days and 2 hours).<LineBreak/>
+    Delete files/folders whose Last Modified date+time is after the specified cutoff.<LineBreak/>
+    • Set the <Bold>Cutoff Date</Bold> using the date picker<LineBreak/>
+    • Set the <Bold>Cutoff Time</Bold> using the hour, minute, and AM/PM fields<LineBreak/>
+    Example: Cutoff Date = 2/19/2026, Cutoff Time = 7:00 PM → deletes only files modified after 7:00 PM today.<LineBreak/>
+    Note: If the cutoff date is in the past (e.g., January), all files modified since then will match regardless of time of day.<LineBreak/>
     <LineBreak/>
     <Bold>Date Range:</Bold><LineBreak/>
     Delete files/folders modified within a specific date range.<LineBreak/>
-    Example: All files from January 2025.<LineBreak/>
-    Optionally include specific start and end times.<LineBreak/>
+    Example: Start Date = 1/1/2025, End Date = 12/31/2025 → all files from calendar year 2025.<LineBreak/>
+    Optionally check "Include specific times" to narrow by time of day within the range.<LineBreak/>
     <LineBreak/>
     <Bold>Exact Date:</Bold><LineBreak/>
     Delete files/folders modified on a specific date.<LineBreak/>
-    Example: Files from 2025-01-15.<LineBreak/>
-    Optionally include specific time (e.g., 14:30).
+    Example: Date = 2/10/2026 → files whose Last Modified date is February 10, 2026.<LineBreak/>
+    Optionally check "Include specific time" to match a precise moment, e.g., 2:30 PM.
                         </TextBlock>
 
-                        <TextBlock Text="Time Precision" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Text="Understanding Cutoff Date and Time" Style="{StaticResource HelpSubHeader}"/>
                         <TextBlock Style="{StaticResource HelpText}">
-                            For Exact Date and Date Range modes, you can optionally include specific times:<LineBreak/>
-                            • Check "Include specific time(s)"<LineBreak/>
-                            • Select hour and minute<LineBreak/>
-                            • Useful for log files or timed backups
+                            The <Bold>Cutoff Date</Bold> and <Bold>Cutoff Time</Bold> work together as a single point in time:<LineBreak/>
+                            <LineBreak/>
+                            • The date picker selects the calendar date (e.g., 2/19/2026)<LineBreak/>
+                            • The hour, minute, and AM/PM fields set the time of day on that date<LineBreak/>
+                            • Both are always applied together — there is no "date only" mode for OlderThan/NewerThan<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Time entry format:</Bold> Use 12-hour format (1–12) with AM/PM dropdown.<LineBreak/>
+                            • 12:00 AM = midnight (start of day)<LineBreak/>
+                            • 12:00 PM = noon<LineBreak/>
+                            • 11:59 PM = one minute before midnight (end of day)<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Example — delete files from before this afternoon:</Bold><LineBreak/>
+                            Cutoff Date: today's date, Cutoff Time: 12:00 PM → OlderThan matches everything modified before noon today.
                         </TextBlock>
 
                         <TextBlock Text="Safety Options" Style="{StaticResource HelpSubHeader}"/>
@@ -331,7 +345,8 @@ C:\CORP BOX\Box\ProjectFiles
                                     3. Save configurations for repeated cleanup tasks<LineBreak/>
                                     4. Export analysis results for record-keeping<LineBreak/>
                                     5. Start with small test folders before cleaning large directories<LineBreak/>
-                                    6. Use file type filters to be more selective
+                                    6. Use file type filters to be more selective<LineBreak/>
+                                    7. Double-check your Cutoff Date — a past date captures everything since then regardless of time
                                 </TextBlock>
                             </StackPanel>
                         </Border>
@@ -343,16 +358,23 @@ C:\CORP BOX\Box\ProjectFiles
                             • Date Mode: Any Date<LineBreak/>
                             • Include Types: .tmp, .log, .cache<LineBreak/>
                             <LineBreak/>
-                            <Bold>Old Archive Cleanup:</Bold><LineBreak/>
+                            <Bold>Old Archive Cleanup (files not touched in over a year):</Bold><LineBreak/>
                             • Cleanup Target: Both<LineBreak/>
-                            • Date Mode: Older Than 365 days<LineBreak/>
+                            • Date Mode: Older Than<LineBreak/>
+                            • Cutoff Date: one year ago, Cutoff Time: 12:00 AM<LineBreak/>
                             • Path: Archive folder<LineBreak/>
                             <LineBreak/>
-                            <Bold>Download Folder Management:</Bold><LineBreak/>
+                            <Bold>Download Folder Management (untouched for 30+ days):</Bold><LineBreak/>
                             • Cleanup Target: Files Only<LineBreak/>
-                            • Date Mode: Older Than 30 days<LineBreak/>
+                            • Date Mode: Older Than<LineBreak/>
+                            • Cutoff Date: 30 days ago, Cutoff Time: 12:00 AM<LineBreak/>
                             • Path: Downloads folder<LineBreak/>
-                            • Exclude Types: .exe, .msi (keep installers)
+                            • Exclude Types: .exe, .msi (keep installers)<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Isolate files created in a specific month:</Bold><LineBreak/>
+                            • Cleanup Target: Files Only<LineBreak/>
+                            • Date Mode: Date Range<LineBreak/>
+                            • Start Date: 1/1/2025, End Date: 1/31/2025
                         </TextBlock>
                     </StackPanel>
                 </ScrollViewer>
@@ -501,7 +523,10 @@ Start in: C:\Path\To\
                             Common Box Drive paths:<LineBreak/>
                             • C:\CORP BOX\Box<LineBreak/>
                             • C:\Users\YourName\Box<LineBreak/>
-                            • B:\
+                            • B:\<LineBreak/>
+                            <LineBreak/>
+                            The registry path is cached for 5 minutes. If Box Drive is installed while the app is
+                            open, it will be detected automatically on the next scan without restarting.
                         </TextBlock>
 
                         <TextBlock Text="Offline File Handling" Style="{StaticResource HelpSubHeader}"/>
@@ -567,6 +592,11 @@ Start in: C:\Path\To\
                             • Verify Box Drive is syncing<LineBreak/>
                             • Try scanning a smaller folder first<LineBreak/>
                             <LineBreak/>
+                            <Bold>Transient IO errors during scan (retry errors):</Bold><LineBreak/>
+                            File Auditor automatically retries directory and file enumeration up to 3 times
+                            when Box Drive returns a transient "retry" error. If all retries fail, the path
+                            is skipped and recorded in the scan errors list — the rest of the scan continues.<LineBreak/>
+                            <LineBreak/>
                             <Bold>Inaccurate counts:</Bold><LineBreak/>
                             • Enable Box Drive refresh<LineBreak/>
                             • Increase timeout<LineBreak/>
@@ -623,13 +653,13 @@ Start in: C:\Path\To\
 
                         <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: What does "Access Denied" mean?</TextBlock>
                         <TextBlock Style="{StaticResource HelpText}">
-                            A: You don't have permission to read that folder/file. The scan will continue and skip 
+                            A: You don't have permission to read that folder/file. The scan will continue and skip
                             that item. Run as administrator if you need access to system folders.
                         </TextBlock>
 
                         <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: Can I compare scans over time?</TextBlock>
                         <TextBlock Style="{StaticResource HelpText}">
-                            A: Yes! Enable "Enable comparison tracking" in CLI/Output Settings. The system will 
+                            A: Yes! Enable "Enable comparison tracking" in CLI/Output Settings. The system will
                             save scan history and allow comparison of changes over time.
                         </TextBlock>
 
@@ -653,13 +683,21 @@ Start in: C:\Path\To\
 
                         <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: What happens if cleanup is cancelled?</TextBlock>
                         <TextBlock Style="{StaticResource HelpText}">
-                            A: Files deleted before cancellation are gone (unless in Recycle Bin). 
+                            A: Files deleted before cancellation are gone (unless in Recycle Bin).
                             Remaining files are not deleted.
+                        </TextBlock>
+
+                        <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: My NewerThan filter returns too many files — what's happening?</TextBlock>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            A: Check the Cutoff Date. If it is set to a date in the past (e.g., a month ago),
+                            all files modified since that date will match — regardless of the cutoff time.
+                            The time only distinguishes files on the same calendar day as the cutoff date.
+                            To match only today's recent files, set the Cutoff Date to today and adjust the time.
                         </TextBlock>
 
                         <TextBlock FontWeight="Bold" Margin="0,10,0,5">Q: Can I clean Box Drive folders?</TextBlock>
                         <TextBlock Style="{StaticResource HelpText}">
-                            A: Yes, but be careful! Deleted files are removed from Box permanently 
+                            A: Yes, but be careful! Deleted files are removed from Box permanently
                             (not just your local machine). Test with Dry Run and use Recycle Bin mode.
                         </TextBlock>
 
@@ -705,24 +743,11 @@ Start in: C:\Path\To\
         <!-- Footer -->
         <Border Grid.Row="1" Background="#F5F5F5" BorderBrush="#CCCCCC" BorderThickness="0,1,0,0" Padding="10">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="Close" 
+                <Button Content="Close"
                         Click="CloseButton_Click"
-                        MinWidth="100" 
+                        MinWidth="100"
                         Padding="10,5"/>
             </StackPanel>
         </Border>
     </Grid>
 </Window>
-
-<!--<Window x:Class="FileAuditor.WPF.Views.HelpWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:FileAuditor.WPF.Views"
-        mc:Ignorable="d"
-        Title="HelpWindow" Height="450" Width="800">
-    <Grid>
-        
-    </Grid>
-</Window>-->

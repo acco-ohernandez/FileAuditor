@@ -37,6 +37,7 @@ FileAuditor.sln
 - **Cancellation**: All long-running operations accept a `CancellationToken`. `MainViewModel` manages one `CancellationTokenSource` for the scan. `CleanupViewModel` manages two separate sources — `_analyzeCancellationTokenSource` and `_executeCancellationTokenSource` — so Analyze and ExecuteCleanup never share a token. The Cancel command cancels both.
 - **Thread safety in Core**: `ScanResult` counters (`TotalFiles`, `TotalFolders`, `TotalSizeBytes`) are backed by `Interlocked` operations. `ScanResult.Errors` uses `ConcurrentBag<ScanError>`. `FileTypeBreakdown` uses `ConcurrentDictionary`. Use the `IncrementFiles()`, `IncrementFolders()`, `AddBytes()`, and `AddError()` helpers — do not assign to the counter properties directly from concurrent code.
 - **MaxDepth default**: Both `MainViewModel` and `CleanupViewModel` default `MaxDepth` to `1` (one level deep). Users opt into deeper scans explicitly. `ScanConfiguration.MaxDepth` defaults to `null` (unlimited) for CLI/programmatic use.
+- **12-hour time fields in `CleanupViewModel`**: Cutoff, Start, and End times are each represented by three `string` observable properties (`*Hour`, `*Minute`, `*AmPm`) rather than a single `int`. `TryParse12HourTime()` converts them to a 24-hour `TimeSpan`; `To12Hour()` converts back when loading a saved config. All three `TimeSpan` fields (`CutoffTime`, `StartTime`, `EndTime`) are recomputed at the top of `CreateConfiguration()` to guarantee the correct value even if a ComboBox change notification fires after the other fields have already propagated.
 
 ---
 
@@ -185,3 +186,5 @@ Configs saved from the WPF app are valid CLI configs (same JSON schema for both 
 - Do not enumerate subdirectories twice in `FileScanner` — the single enumeration result is reused for both counting and recursion.
 - Do not use `async Task` on methods that have no `await` — use synchronous signatures instead (see `BrowseFolder`, `LoadConfiguration` in both ViewModels).
 - Do not call `GetScanHistoryAsync` with both a `path` filter and a `limit` expecting `limit` total records — the limit is applied after the path filter, so `limit` controls matching records, not total records read.
+- Do not read `CutoffTime`, `StartTime`, or `EndTime` directly in `CreateConfiguration()` without first calling `TryParse12HourTime()` to recompute them — the TimeSpan properties may lag behind the string fields if the AM/PM ComboBox fires its change notification out of order.
+- Do not display `Last Modified` timestamps in the Cleanup results DataGrid using `HH:mm:ss` (24-hour) — use `hh:mm:ss tt` (12-hour AM/PM) to be consistent with the time entry controls. CSV exports may retain ISO 24-hour format for data portability.
