@@ -98,7 +98,7 @@ namespace FileAuditor.WPF.ViewModels
         private TimeSpan _startTime = new TimeSpan(0, 0, 0);
 
         [ObservableProperty]
-        private TimeSpan _endTime = new TimeSpan(23, 59, 59);
+        private TimeSpan _endTime = new TimeSpan(23, 59, 0);
 
         [ObservableProperty]
         private ObservableCollection<CleanupConfiguration> _savedConfigurations = new();
@@ -106,85 +106,108 @@ namespace FileAuditor.WPF.ViewModels
         [ObservableProperty]
         private CleanupConfiguration? _selectedConfiguration;
 
+        // ── 12-hour time helpers ─────────────────────────────────────────────────
+        // Cutoff time (OlderThan / NewerThan)
+        [ObservableProperty] private string _cutoffTimeHour = "12";
+        [ObservableProperty] private string _cutoffTimeMinute = "00";
+        [ObservableProperty] private string _cutoffTimeAmPm = "AM";
 
+        // Start time (DateRange start / ExactDate)
+        [ObservableProperty] private string _startTimeHour = "12";
+        [ObservableProperty] private string _startTimeMinute = "00";
+        [ObservableProperty] private string _startTimeAmPm = "AM";
 
-
-        // Helper properties for time input
-        [ObservableProperty]
-        private int _startTimeHour = 0;
-
-        [ObservableProperty]
-        private int _startTimeMinute = 0;
-
-        [ObservableProperty]
-        private int _endTimeHour = 23;
-
-        [ObservableProperty]
-        private int _endTimeMinute = 59;
+        // End time (DateRange end)
+        [ObservableProperty] private string _endTimeHour = "11";
+        [ObservableProperty] private string _endTimeMinute = "59";
+        [ObservableProperty] private string _endTimeAmPm = "PM";
 
         [ObservableProperty]
         private DateTime? _cutoffDate = DateTime.Now.AddDays(-30);
 
         [ObservableProperty]
-        private int _cutoffTimeHour = 0;
-
-        [ObservableProperty]
-        private int _cutoffTimeMinute = 0;
-
-        [ObservableProperty]
         private TimeSpan _cutoffTime = new TimeSpan(0, 0, 0);
 
-        // Update cutoff time when hour/minute changes
-        partial void OnCutoffTimeHourChanged(int value)
+        // ── AM/PM options ────────────────────────────────────────────────────────
+        public ObservableCollection<string> AmPmOptions { get; } = new() { "AM", "PM" };
+
+        // ── Partial method callbacks: rebuild TimeSpan when any 12h field changes ─
+
+        partial void OnCutoffTimeHourChanged(string value) => RebuildCutoffTime();
+        partial void OnCutoffTimeMinuteChanged(string value) => RebuildCutoffTime();
+        partial void OnCutoffTimeAmPmChanged(string value) => RebuildCutoffTime();
+
+        partial void OnStartTimeHourChanged(string value) => RebuildStartTime();
+        partial void OnStartTimeMinuteChanged(string value) => RebuildStartTime();
+        partial void OnStartTimeAmPmChanged(string value) => RebuildStartTime();
+
+        partial void OnEndTimeHourChanged(string value) => RebuildEndTime();
+        partial void OnEndTimeMinuteChanged(string value) => RebuildEndTime();
+        partial void OnEndTimeAmPmChanged(string value) => RebuildEndTime();
+
+        // ── Private helpers that convert 12-hour fields → TimeSpan ───────────────
+
+        private void RebuildCutoffTime()
         {
-            if (value >= 0 && value <= 23)
-            {
-                CutoffTime = new TimeSpan(value, CutoffTimeMinute, 0);
-            }
+            if (TryParse12HourTime(CutoffTimeHour, CutoffTimeMinute, CutoffTimeAmPm, out var ts))
+                CutoffTime = ts;
         }
 
-        partial void OnCutoffTimeMinuteChanged(int value)
+        private void RebuildStartTime()
         {
-            if (value >= 0 && value <= 59)
-            {
-                CutoffTime = new TimeSpan(CutoffTimeHour, value, 0);
-            }
+            if (TryParse12HourTime(StartTimeHour, StartTimeMinute, StartTimeAmPm, out var ts))
+                StartTime = ts;
         }
 
-        // Update StartTime when hour/minute changes
-        partial void OnStartTimeHourChanged(int value)
+        private void RebuildEndTime()
         {
-            if (value >= 0 && value <= 23)
-            {
-                StartTime = new TimeSpan(value, StartTimeMinute, 0);
-            }
+            if (TryParse12HourTime(EndTimeHour, EndTimeMinute, EndTimeAmPm, out var ts))
+                EndTime = ts;
         }
 
-        partial void OnStartTimeMinuteChanged(int value)
+        /// <summary>
+        /// Parses 12-hour hour/minute/ampm strings into a <see cref="TimeSpan"/>.
+        /// Returns false (and leaves <paramref name="result"/> at default) if any field
+        /// is out of range so the TimeSpan is not updated mid-typing.
+        /// </summary>
+        private static bool TryParse12HourTime(string hourStr, string minuteStr, string ampm, out TimeSpan result)
         {
-            if (value >= 0 && value <= 59)
+            result = default;
+
+            if (!int.TryParse(hourStr, out int hour) || hour < 1 || hour > 12)
+                return false;
+
+            if (!int.TryParse(minuteStr, out int minute) || minute < 0 || minute > 59)
+                return false;
+
+            // Convert 12-hour clock to 24-hour
+            int hour24 = hour;
+            if (ampm == "AM")
             {
-                StartTime = new TimeSpan(StartTimeHour, value, 0);
+                if (hour == 12) hour24 = 0;   // 12 AM = midnight
             }
+            else // PM
+            {
+                if (hour != 12) hour24 = hour + 12;  // 12 PM stays 12, 1–11 PM → 13–23
+            }
+
+            result = new TimeSpan(hour24, minute, 0);
+            return true;
         }
 
-        partial void OnEndTimeHourChanged(int value)
+        /// <summary>
+        /// Converts a 24-hour <see cref="TimeSpan"/> back into 12-hour field strings.
+        /// </summary>
+        private static (string Hour, string Minute, string AmPm) To12Hour(TimeSpan ts)
         {
-            if (value >= 0 && value <= 23)
-            {
-                EndTime = new TimeSpan(value, EndTimeMinute, 0);
-            }
+            int h24 = ts.Hours % 24;
+            string ampm = h24 < 12 ? "AM" : "PM";
+
+            int h12 = h24 % 12;
+            if (h12 == 0) h12 = 12;
+
+            return (h12.ToString(), ts.Minutes.ToString("D2"), ampm);
         }
-
-        partial void OnEndTimeMinuteChanged(int value)
-        {
-            if (value >= 0 && value <= 59)
-            {
-                EndTime = new TimeSpan(EndTimeHour, value, 0);
-            }
-        }
-
-
 
         public ObservableCollection<CleanupTarget> CleanupTargets { get; } = new()
         {
@@ -204,17 +227,17 @@ namespace FileAuditor.WPF.ViewModels
 
         // Add to constructor injection
         private readonly IScanHistoryService _historyService;
-        private readonly IExportService _exportService;  // ADD THIS
+        private readonly IExportService _exportService;
 
         public CleanupViewModel(
             ICleanupService cleanupService,
             IScanHistoryService historyService,
-            IExportService exportService,  // ADD THIS PARAMETER
+            IExportService exportService,
             ILogger<CleanupViewModel> logger)
         {
             _cleanupService = cleanupService;
             _historyService = historyService;
-            _exportService = exportService;  // ADD THIS
+            _exportService = exportService;
             _logger = logger;
 
             _ = LoadSavedConfigurations();
@@ -242,17 +265,17 @@ namespace FileAuditor.WPF.ViewModels
         [RelayCommand]
         private async Task ImportFromCsv()
         {
-            var dialog = new Microsoft.Win32.OpenFileDialog  // Use fully qualified name
+            var dialog = new Microsoft.Win32.OpenFileDialog
             {
                 Filter = "CSV Files (*.csv)|*.csv|All Files (*.*)|*.*",
                 Title = "Import Paths from CSV"
             };
 
-            if (dialog.ShowDialog() == true)  // This works with Microsoft.Win32.OpenFileDialog
+            if (dialog.ShowDialog() == true)
             {
                 try
                 {
-                    var paths = await _exportService.ImportPathsFromCsvAsync(dialog.FileName);  // Fixed: _exportService
+                    var paths = await _exportService.ImportPathsFromCsvAsync(dialog.FileName);
 
                     if (!string.IsNullOrWhiteSpace(PathsText))
                         PathsText += Environment.NewLine;
@@ -510,7 +533,6 @@ namespace FileAuditor.WPF.ViewModels
                 return;
             }
 
-            //var dialog = new SaveFileDialog // commented out to avoid ambiguity
             var dialog = new Microsoft.Win32.SaveFileDialog
             {
                 Filter = "CSV Files (*.csv)|*.csv|JSON Files (*.json)|*.json",
@@ -549,7 +571,6 @@ namespace FileAuditor.WPF.ViewModels
         }
 
 
-        // Add these new commands
         [RelayCommand]
         private async Task SaveConfiguration()
         {
@@ -689,8 +710,10 @@ namespace FileAuditor.WPF.ViewModels
             CutoffDate = SelectedConfiguration.CutoffDate;
             if (SelectedConfiguration.CutoffTime.HasValue)
             {
-                CutoffTimeHour = SelectedConfiguration.CutoffTime.Value.Hours;
-                CutoffTimeMinute = SelectedConfiguration.CutoffTime.Value.Minutes;
+                var (h, m, ap) = To12Hour(SelectedConfiguration.CutoffTime.Value);
+                CutoffTimeHour = h;
+                CutoffTimeMinute = m;
+                CutoffTimeAmPm = ap;
                 CutoffTime = SelectedConfiguration.CutoffTime.Value;
             }
 
@@ -700,15 +723,19 @@ namespace FileAuditor.WPF.ViewModels
 
             if (SelectedConfiguration.StartTime.HasValue)
             {
-                StartTimeHour = SelectedConfiguration.StartTime.Value.Hours;
-                StartTimeMinute = SelectedConfiguration.StartTime.Value.Minutes;
+                var (h, m, ap) = To12Hour(SelectedConfiguration.StartTime.Value);
+                StartTimeHour = h;
+                StartTimeMinute = m;
+                StartTimeAmPm = ap;
                 StartTime = SelectedConfiguration.StartTime.Value;
             }
 
             if (SelectedConfiguration.EndTime.HasValue)
             {
-                EndTimeHour = SelectedConfiguration.EndTime.Value.Hours;
-                EndTimeMinute = SelectedConfiguration.EndTime.Value.Minutes;
+                var (h, m, ap) = To12Hour(SelectedConfiguration.EndTime.Value);
+                EndTimeHour = h;
+                EndTimeMinute = m;
+                EndTimeAmPm = ap;
                 EndTime = SelectedConfiguration.EndTime.Value;
             }
 
@@ -743,7 +770,6 @@ namespace FileAuditor.WPF.ViewModels
             }
         }
 
-        // Update CreateConfiguration to include new properties
         public CleanupConfiguration CreateConfiguration()
         {
             var config = new CleanupConfiguration

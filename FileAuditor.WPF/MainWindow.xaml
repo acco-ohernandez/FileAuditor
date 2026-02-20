@@ -585,18 +585,20 @@
                                         <StackPanel Orientation="Horizontal" Margin="0,5">
                                             <TextBlock Text="Cutoff Time:" VerticalAlignment="Center" Width="80"/>
                                             <TextBox Text="{Binding CutoffTimeHour, UpdateSourceTrigger=PropertyChanged}"
-                 Width="40"
+                 Width="35"
                  MaxLength="2"
-                 Margin="0,0,5,0"/>
+                 Margin="0,0,3,0"
+                 ToolTip="Hour (1–12)"/>
                                             <TextBlock Text=":" VerticalAlignment="Center"/>
                                             <TextBox Text="{Binding CutoffTimeMinute, UpdateSourceTrigger=PropertyChanged}"
-                 Width="40"
+                 Width="35"
                  MaxLength="2"
-                 Margin="5,0,10,0"/>
-                                            <TextBlock Text="(HH:MM 24-hour format)" 
-                  VerticalAlignment="Center"
-                  FontSize="10"
-                  Foreground="Gray"/>
+                 Margin="3,0,5,0"
+                 ToolTip="Minute (00–59)"/>
+                                            <ComboBox ItemsSource="{Binding AmPmOptions}"
+                  SelectedItem="{Binding CutoffTimeAmPm}"
+                  Width="55"
+                  Margin="0,0,8,0"/>
                                         </StackPanel>
 
                                         <Border Background="#E3F2FD" 
@@ -607,7 +609,7 @@
             CornerRadius="3">
                                             <TextBlock TextWrapping="Wrap" FontSize="10">
             <Run Text="Example: " FontWeight="Bold"/>
-            <Run Text="For 'OlderThan' mode, setting date to today and time to 13:00 will identify all files modified before 1:00 PM today."/>
+            <Run Text="For 'OlderThan' mode, setting date to today and time to 1:00 PM will identify all files modified before 1:00 PM today."/>
                                             </TextBlock>
                                         </Border>
                                     </StackPanel>
@@ -627,24 +629,24 @@
                       IsChecked="{Binding IncludeTime}"
                       Margin="0,10,0,5"/>
 
-                                        <StackPanel Orientation="Horizontal" 
+                                        <StackPanel Orientation="Horizontal"
                        Margin="0,5"
                        IsEnabled="{Binding IncludeTime}">
                                             <TextBlock Text="Time:" VerticalAlignment="Center" Width="80"/>
                                             <TextBox Text="{Binding StartTimeHour, UpdateSourceTrigger=PropertyChanged}"
-                         Width="40"
+                         Width="35"
                          MaxLength="2"
-                         Margin="0,0,5,0"/>
+                         Margin="0,0,3,0"
+                         ToolTip="Hour (1–12)"/>
                                             <TextBlock Text=":" VerticalAlignment="Center"/>
                                             <TextBox Text="{Binding StartTimeMinute, UpdateSourceTrigger=PropertyChanged}"
-                         Width="40"
+                         Width="35"
                          MaxLength="2"
-                         Margin="5,0,0,0"/>
-                                            <TextBlock Text="(HH:MM 24-hour format)" 
-                          VerticalAlignment="Center" 
-                          Margin="10,0,0,0"
-                          FontSize="10"
-                          Foreground="Gray"/>
+                         Margin="3,0,5,0"
+                         ToolTip="Minute (00–59)"/>
+                                            <ComboBox ItemsSource="{Binding AmPmOptions}"
+                          SelectedItem="{Binding StartTimeAmPm}"
+                          Width="55"/>
                                         </StackPanel>
                                     </StackPanel>
 
@@ -670,43 +672,45 @@
                       Margin="0,10,0,5"/>
 
                                         <!-- Start Time -->
-                                        <StackPanel Orientation="Horizontal" 
+                                        <StackPanel Orientation="Horizontal"
                        Margin="0,5"
                        IsEnabled="{Binding IncludeTime}">
                                             <TextBlock Text="Start Time:" VerticalAlignment="Center" Width="80"/>
                                             <TextBox Text="{Binding StartTimeHour, UpdateSourceTrigger=PropertyChanged}"
-                         Width="40"
+                         Width="35"
                          MaxLength="2"
-                         Margin="0,0,5,0"/>
+                         Margin="0,0,3,0"
+                         ToolTip="Hour (1–12)"/>
                                             <TextBlock Text=":" VerticalAlignment="Center"/>
                                             <TextBox Text="{Binding StartTimeMinute, UpdateSourceTrigger=PropertyChanged}"
-                         Width="40"
+                         Width="35"
                          MaxLength="2"
-                         Margin="5,0,10,0"/>
-                                            <TextBlock Text="(24-hour format)" 
-                          VerticalAlignment="Center"
-                          FontSize="10"
-                          Foreground="Gray"/>
+                         Margin="3,0,5,0"
+                         ToolTip="Minute (00–59)"/>
+                                            <ComboBox ItemsSource="{Binding AmPmOptions}"
+                          SelectedItem="{Binding StartTimeAmPm}"
+                          Width="55"/>
                                         </StackPanel>
 
                                         <!-- End Time -->
-                                        <StackPanel Orientation="Horizontal" 
+                                        <StackPanel Orientation="Horizontal"
                        Margin="0,5"
                        IsEnabled="{Binding IncludeTime}">
                                             <TextBlock Text="End Time:" VerticalAlignment="Center" Width="80"/>
                                             <TextBox Text="{Binding EndTimeHour, UpdateSourceTrigger=PropertyChanged}"
-                         Width="40"
+                         Width="35"
                          MaxLength="2"
-                         Margin="0,0,5,0"/>
+                         Margin="0,0,3,0"
+                         ToolTip="Hour (1–12)"/>
                                             <TextBlock Text=":" VerticalAlignment="Center"/>
                                             <TextBox Text="{Binding EndTimeMinute, UpdateSourceTrigger=PropertyChanged}"
-                         Width="40"
+                         Width="35"
                          MaxLength="2"
-                         Margin="5,0,10,0"/>
-                                            <TextBlock Text="(24-hour format)" 
-                          VerticalAlignment="Center"
-                          FontSize="10"
-                          Foreground="Gray"/>
+                         Margin="3,0,5,0"
+                         ToolTip="Minute (00–59)"/>
+                                            <ComboBox ItemsSource="{Binding AmPmOptions}"
+                          SelectedItem="{Binding EndTimeAmPm}"
+                          Width="55"/>
                                         </StackPanel>
                                     </StackPanel>
 
