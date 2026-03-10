@@ -199,7 +199,7 @@ namespace FileAuditor.WPF.ViewModels
                 // Perform scan
                 var progress = new Progress<ScanProgress>(p =>
                 {
-                    StatusMessage = $"Scanning: {p.CurrentOperation}";
+                    StatusMessage = p.CurrentOperation;
                     ProgressPercentage = p.PercentComplete;
                 });
 
