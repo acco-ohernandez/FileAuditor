@@ -181,8 +181,10 @@ namespace FileAuditor.Core.Services
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Check depth limit
-            if (config.MaxDepth.HasValue && currentDepth >= config.MaxDepth.Value)
+            // Check depth limit.
+            // MaxDepth=1 means "1 level deep from the root" (root + direct subdirs).
+            // Using strict greater-than so MaxDepth=0 = root only, MaxDepth=1 = root + 1 sub-level.
+            if (config.MaxDepth.HasValue && currentDepth > config.MaxDepth.Value)
                 return;
 
             var enumOptions = FileSystemHelper.GetEnumerationOptions(config.IncludeHiddenFiles);
@@ -219,19 +221,25 @@ namespace FileAuditor.Core.Services
                         () => Directory.EnumerateFiles(path, "*", enumOptions).ToList(),
                         path, result, cancellationToken);
 
+                    // Case-insensitive, dot-normalizing extension matcher used for both include and
+                    // exclude lists. Entries may arrive with or without a leading dot (e.g. "txt", ".txt",
+                    // ".TXT") — normalise both sides to lowercase-with-dot before comparing.
+                    static bool ExtMatches(string entry, string ext) =>
+                        (entry.StartsWith('.') ? entry : "." + entry).ToLowerInvariant() == ext;
+
                     await Task.Run(() =>
                     {
                         foreach (var file in files)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
 
-                            // Apply file type filters
-                            var extension = Path.GetExtension(file).ToLower();
+                            // Apply file type filters (case-insensitive, dot-normalised)
+                            var extension = Path.GetExtension(file).ToLowerInvariant();
 
-                            if (config.IncludeFileTypes.Any() && !config.IncludeFileTypes.Contains(extension))
+                            if (config.IncludeFileTypes.Any() && !config.IncludeFileTypes.Any(ft => ExtMatches(ft, extension)))
                                 continue;
 
-                            if (config.ExcludeFileTypes.Contains(extension))
+                            if (config.ExcludeFileTypes.Any(ft => ExtMatches(ft, extension)))
                                 continue;
 
                             // Thread-safe increment via Interlocked (C-1 fix)

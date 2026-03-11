@@ -75,11 +75,14 @@
                         <TextBlock Text="Key Features" Style="{StaticResource HelpSubHeader}"/>
                         <TextBlock Style="{StaticResource HelpText}">
                             • <Bold>Scan:</Bold> Audit local, network, and Box Drive paths<LineBreak/>
-                            • <Bold>Cleanup:</Bold> Safely delete old files based on flexible date and time criteria<LineBreak/>
+                            • <Bold>Cleanup:</Bold> Safely delete or move old files based on flexible date and type filters<LineBreak/>
+                            • <Bold>Move to Folder:</Bold> Relocate files/folders to a destination while preserving structure<LineBreak/>
                             • <Bold>Reports:</Bold> Export results to CSV or JSON<LineBreak/>
                             • <Bold>History:</Bold> Track scans over time and compare changes<LineBreak/>
                             • <Bold>CLI:</Bold> Automate tasks via command line and Task Scheduler<LineBreak/>
-                            • <Bold>Box Drive:</Bold> Automatic detection and offline file hydration
+                            • <Bold>Box Drive:</Bold> Automatic detection and offline file hydration<LineBreak/>
+                            • <Bold>Clear All (File → Clear All):</Bold> Reset both tabs to defaults in one click<LineBreak/>
+                            • <Bold>Today / Now buttons:</Bold> Quick-set any date/time field to the current moment
                         </TextBlock>
 
                         <TextBlock Text="Quick Start" Style="{StaticResource HelpSubHeader}"/>
@@ -155,8 +158,9 @@ C:\CORP BOX\Box\ProjectFiles
                             <LineBreak/>
                             <Bold>Recursive Scan:</Bold><LineBreak/>
                             When enabled, scans all subdirectories. Use Max Depth to limit how deep to scan.<LineBreak/>
-                            • <Bold>Max Depth 1:</Bold> Only the specified folder (default)<LineBreak/>
-                            • <Bold>Max Depth 2:</Bold> Folder + immediate subfolders<LineBreak/>
+                            • <Bold>Max Depth 0:</Bold> Only the root folder itself (no subdirectories)<LineBreak/>
+                            • <Bold>Max Depth 1:</Bold> Root folder + one level of subdirectories (default)<LineBreak/>
+                            • <Bold>Max Depth 2:</Bold> Root + two levels deep<LineBreak/>
                             • <Bold>Empty / blank:</Bold> Unlimited depth<LineBreak/>
                             <LineBreak/>
                             <Bold>Parallel Threads:</Bold><LineBreak/>
@@ -184,7 +188,10 @@ C:\CORP BOX\Box\ProjectFiles
                             <Bold>Include Types:</Bold> Only count these file types (e.g., .docx, .pdf)<LineBreak/>
                             <Bold>Exclude Types:</Bold> Ignore these file types (e.g., .tmp, .log)<LineBreak/>
                             <LineBreak/>
-                            Leave both empty to count all files.
+                            Leave both empty to count all files.<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Format note:</Bold> Extensions are case-insensitive and the leading dot is optional.
+                            Entering "TXT", ".txt", or ".TXT" all match the same files.
                         </TextBlock>
 
                         <TextBlock Text="CLI / Output Settings" Style="{StaticResource HelpSubHeader}"/>
@@ -311,17 +318,74 @@ C:\CORP BOX\Box\ProjectFiles
                             Cutoff Date: today's date, Cutoff Time: 12:00 PM → OlderThan matches everything modified before noon today.
                         </TextBlock>
 
+                        <TextBlock Text="Today / Now Quick-Set Buttons" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            Each date picker row has a <Bold>📅 Today</Bold> button that instantly sets both the date
+                            and its associated time fields to the current date and time.<LineBreak/>
+                            <LineBreak/>
+                            • <Bold>Cutoff Date row (OlderThan / NewerThan):</Bold> Sets CutoffDate + CutoffTime to now<LineBreak/>
+                            • <Bold>Date row (ExactDate):</Bold> Sets StartDate + StartTime to now<LineBreak/>
+                            • <Bold>Past Date row (DateRange):</Bold> Sets StartDate + StartTime to now<LineBreak/>
+                            • <Bold>Recent Date row (DateRange):</Bold> Sets EndDate + EndTime to now<LineBreak/>
+                            <LineBreak/>
+                            All date/time fields also default to the current date and time when the application starts.
+                        </TextBlock>
+
+                        <TextBlock Text="Operation Mode" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            <Bold>Delete (default):</Bold><LineBreak/>
+                            Removes matched files/folders. Combine with "Move to Recycle Bin" for safety.<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Move to Folder:</Bold><LineBreak/>
+                            Relocates matched files/folders to a destination folder you specify.<LineBreak/>
+                            The original folder structure is preserved at the destination. For example,<LineBreak/>
+                            scanning C:\Source\SubA\file.txt with destination D:\Archive produces<LineBreak/>
+                            D:\Archive\SubA\file.txt — the relative path from the source root is kept.<LineBreak/>
+                            <LineBreak/>
+                            When "Move to Folder" is selected, enter or browse to a destination folder.<LineBreak/>
+                            The "Move to Recycle Bin" option is hidden (not applicable in Move mode).<LineBreak/>
+                            If a file already exists at the destination it will be overwritten.<LineBreak/>
+                            <LineBreak/>
+                            <Bold>CLI equivalent:</Bold> Add --move &lt;destination&gt; to the cleanup command.<LineBreak/>
+                            Example: FileAuditor.CLI cleanup --config cfg.json --execute --move D:\Archive
+                        </TextBlock>
+
                         <TextBlock Text="Safety Options" Style="{StaticResource HelpSubHeader}"/>
                         <TextBlock Style="{StaticResource HelpText}">
                             <Bold>Dry Run:</Bold><LineBreak/>
-                            Preview mode - no files are deleted. <Bold>Always start here!</Bold><LineBreak/>
+                            Preview mode — no files are deleted or moved. <Bold>Always start here!</Bold><LineBreak/>
                             <LineBreak/>
                             <Bold>Require Confirmation:</Bold><LineBreak/>
-                            Shows a confirmation dialog before deletion with file/folder counts.<LineBreak/>
+                            Shows a confirmation dialog before the operation with file/folder counts.<LineBreak/>
                             <LineBreak/>
-                            <Bold>Move to Recycle Bin:</Bold><LineBreak/>
+                            <Bold>Move to Recycle Bin (Delete mode only):</Bold><LineBreak/>
                             Deleted items go to Recycle Bin (can be recovered).<LineBreak/>
                             Uncheck for permanent deletion (use with extreme caution).
+                        </TextBlock>
+
+                        <TextBlock Text="Paths to Clean — Format" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            The "Paths to Clean" text box accepts one entry per line. The format depends on the selected Operation Mode:<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Delete mode:</Bold> One source path per line<LineBreak/>
+                            <Bold>Move to Folder mode:</Bold> source,destination  (comma-separated, one pair per line)<LineBreak/>
+                            <LineBreak/>
+                            Example — Delete mode:
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource CodeBlock}">
+C:\Users\YourName\Downloads<LineBreak/>
+C:\Temp\OldLogs
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            Example — Move to Folder mode (each source has its own destination):
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource CodeBlock}">
+C:\Source\ProjectA,D:\Archive\ProjectA<LineBreak/>
+C:\Source\ProjectB,D:\Archive\ProjectB
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            The hint label above the text box changes automatically to remind you of the format
+                            when you switch Operation Mode.
                         </TextBlock>
 
                         <TextBlock Text="File Type Filters" Style="{StaticResource HelpSubHeader}"/>
@@ -333,7 +397,19 @@ C:\CORP BOX\Box\ProjectFiles
                             Example: .docx, .pdf, .xlsx (protect important documents)<LineBreak/>
                             <LineBreak/>
                             <Bold>Exclude Patterns:</Bold> Regular expressions to exclude paths<LineBreak/>
-                            Example: .*important.*, .*backup.* (protect folders with these words)
+                            Example: .*important.*, .*backup.* (protect folders with these words)<LineBreak/>
+                            <LineBreak/>
+                            <Bold>Format note:</Bold> Extensions are case-insensitive and the leading dot is optional.
+                            Entering "TMP", ".tmp", or "tmp" all match the same files.
+                        </TextBlock>
+
+                        <TextBlock Text="Resetting the Form" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            Use <Bold>File → Clear All</Bold> to reset both the File Counter and Cleanup tabs
+                            to their default settings in one click. A confirmation prompt is shown before clearing.<LineBreak/>
+                            <LineBreak/>
+                            You can also use the <Bold>ClearAll</Bold> button (if visible in the toolbar) or invoke it from the
+                            File menu. The operation is blocked if an Analyze or Execute operation is currently running.
                         </TextBlock>
 
                         <Border Style="{StaticResource TipBox}">
@@ -342,11 +418,13 @@ C:\CORP BOX\Box\ProjectFiles
                                 <TextBlock TextWrapping="Wrap">
                                     1. Always test with Dry Run first<LineBreak/>
                                     2. Use Recycle Bin mode for first-time cleanups<LineBreak/>
-                                    3. Save configurations for repeated cleanup tasks<LineBreak/>
-                                    4. Export analysis results for record-keeping<LineBreak/>
-                                    5. Start with small test folders before cleaning large directories<LineBreak/>
-                                    6. Use file type filters to be more selective<LineBreak/>
-                                    7. Double-check your Cutoff Date — a past date captures everything since then regardless of time
+                                    3. Use the 📅 Today button to quickly set any date/time to right now<LineBreak/>
+                                    4. Save configurations for repeated cleanup tasks<LineBreak/>
+                                    5. Export analysis results for record-keeping<LineBreak/>
+                                    6. Start with small test folders before cleaning large directories<LineBreak/>
+                                    7. Use file type filters to be more selective<LineBreak/>
+                                    8. Double-check your Cutoff Date — a past date captures everything since then regardless of time<LineBreak/>
+                                    9. Use File → Clear All when starting a new configuration from scratch
                                 </TextBlock>
                             </StackPanel>
                         </Border>
@@ -423,11 +501,19 @@ FileAuditor.CLI scan -c config.json --verbose
 # Dry run (preview) - ALWAYS START HERE<LineBreak/>
 FileAuditor.CLI cleanup --config cleanup.json --dry-run<LineBreak/>
 <LineBreak/>
-# Execute cleanup<LineBreak/>
+# Execute cleanup (delete)<LineBreak/>
 FileAuditor.CLI cleanup --config cleanup.json --execute<LineBreak/>
+<LineBreak/>
+# Execute with Move to Folder (all paths go to same destination)<LineBreak/>
+FileAuditor.CLI cleanup -c cleanup.json --execute --move D:\Archive<LineBreak/>
 <LineBreak/>
 # With verbose logging<LineBreak/>
 FileAuditor.CLI cleanup -c cleanup.json --execute --verbose
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource HelpText}">
+                            <Bold>--move &lt;destination&gt;:</Bold> Switches to Move to Folder mode and sends all matched
+                            items to the specified destination, preserving relative path structure.
+                            For per-path destinations, set DestinationPath on each PathItem in the JSON config instead.
                         </TextBlock>
 
                         <TextBlock Text="Configuration Files" Style="{StaticResource HelpSubHeader}"/>

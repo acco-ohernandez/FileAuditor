@@ -102,10 +102,26 @@ namespace FileAuditor.WPF
                     MessageBoxImage.Error);
             }
         }
+        private void ClearAll_Click(object sender, RoutedEventArgs e)
+        {
+            var result = MessageBox.Show(
+                "This will reset both the File Counter and Cleanup tabs to their default settings.\n\n" +
+                "All unsaved paths and results will be lost. Continue?",
+                "Clear All",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result == System.Windows.MessageBoxResult.Yes)
+            {
+                MainViewModel.ClearAllCommand.Execute(null);
+                CleanupViewModel.ClearAllCommand.Execute(null);
+            }
+        }
+
         private void About_Click(object sender, RoutedEventArgs e)
         {
             MessageBox.Show(
-                "File Auditor v1.4\n\n" +
+                "File Auditor v1.6\n\n" +
                 "By: Orlando R Hernandez\n\n" +
                 "A comprehensive tool for auditing and cleaning file systems including:\n" +
                 "• Local drives\n" +
@@ -114,10 +130,13 @@ namespace FileAuditor.WPF
                 "Features:\n" +
                 "• Recursive scanning with depth control\n" +
                 "• Parallel processing\n" +
-                "• File type breakdown\n" +
+                "• File type breakdown (case-insensitive filter)\n" +
                 "• Export to CSV/JSON\n" +
                 "• Scan history and comparison\n" +
                 "• Safe cleanup with dry-run mode\n" +
+                "• Move to Folder (per-path destination)\n" +
+                "• Date quick-set (Today / Now buttons)\n" +
+                "• Clear All to reset the form\n" +
                 "• Command-line interface for automation\n\n" +
                 "Built with .NET 8 and WPF\n" +
                 "© 2026",

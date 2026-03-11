@@ -8,6 +8,13 @@ namespace FileAuditor.Core.Models
         public bool IsValid { get; set; }
         public string? ValidationError { get; set; }
 
+        /// <summary>
+        /// Optional destination path used in MoveToFolder cleanup mode.
+        /// Populated when the user supplies a two-column entry (source,destination).
+        /// Null in Delete mode or when no destination is specified.
+        /// </summary>
+        public string? DestinationPath { get; set; }
+
         public PathItem() { }
 
         public PathItem(string path)
@@ -27,7 +34,8 @@ namespace FileAuditor.Core.Models
                 IsBoxDrivePath = IsBoxDrivePath,
                 IsNetworkPath = IsNetworkPath,
                 IsValid = IsValid,
-                ValidationError = ValidationError
+                ValidationError = ValidationError,
+                DestinationPath = DestinationPath
             };
         }
 

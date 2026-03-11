@@ -111,44 +111,44 @@ namespace FileAuditor.Core.Services
             {
                 _logger?.LogInformation("Importing paths from CSV: {FilePath}", filePath);
 
+                var lines = await File.ReadAllLinesAsync(filePath);
                 var paths = new List<PathItem>();
-                var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+
+                foreach (var line in lines)
                 {
-                    HasHeaderRecord = true,
-                    MissingFieldFound = null,
-                    HeaderValidated = null
-                };
+                    var trimmed = line.Trim();
 
-                using var reader = new StreamReader(filePath);
-                using var csv = new CsvReader(reader, config);
+                    if (string.IsNullOrWhiteSpace(trimmed))
+                        continue;
 
-                await csv.ReadAsync();
-                csv.ReadHeader();
+                    // Skip rows that don't begin with a Windows path prefix (drive letter + colon,
+                    // or UNC \\server path).  This silently discards CSV header rows like
+                    // "Path,Status,..." without needing HasHeaderRecord=true, which would
+                    // otherwise consume the first data row as a header.
+                    bool looksLikePath = (trimmed.Length >= 2 && trimmed[1] == ':')
+                                       || trimmed.StartsWith(@"\\");
 
-                while (await csv.ReadAsync())
-                {
-                    // Try to read from "Path" column, fall back to first column
-                    string? path = null;
+                    if (!looksLikePath)
+                        continue;
 
-                    var csvReader = csv.Context?.Reader;
-                    var headerRecord = csvReader?.HeaderRecord;
-
-                    if (headerRecord != null && headerRecord.Contains("Path"))
+                    // Split on the first comma only so that the two-column
+                    // "source,destination" cleanup format is handled correctly, and
+                    // any path that happens to contain a comma still works.
+                    var commaIndex = trimmed.IndexOf(',');
+                    if (commaIndex >= 0)
                     {
-                        path = csv.GetField<string>("Path");
-                    }
-                    else if (headerRecord != null && headerRecord.Contains("path"))
-                    {
-                        path = csv.GetField<string>("path");
+                        var source = trimmed[..commaIndex].Trim();
+                        var dest   = trimmed[(commaIndex + 1)..].Trim();
+
+                        if (!string.IsNullOrWhiteSpace(source))
+                            paths.Add(new PathItem(source)
+                            {
+                                DestinationPath = string.IsNullOrWhiteSpace(dest) ? null : dest
+                            });
                     }
                     else
                     {
-                        path = csv.GetField<string>(0);
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(path))
-                    {
-                        paths.Add(new PathItem(path));
+                        paths.Add(new PathItem(trimmed));
                     }
                 }
 

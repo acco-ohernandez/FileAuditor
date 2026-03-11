@@ -58,7 +58,9 @@ namespace FileAuditor.Core.Services
                     ScanForCleanup(path, config, result, 0, cancellationToken, progress);
                 }, cancellationToken);
 
-                result.Status = CleanupStatus.ReadyToDelete;
+                result.Status = config.OperationMode == CleanupOperationMode.MoveToFolder
+                    ? CleanupStatus.ReadyToMove
+                    : CleanupStatus.ReadyToDelete;
                 _logger?.LogInformation("Analysis complete. Found {FileCount} files, {FolderCount} folders",
                     result.FilesIdentified, result.FoldersIdentified);
             }
@@ -99,19 +101,34 @@ namespace FileAuditor.Core.Services
                 return analysisResult;
             }
 
-            analysisResult.Status = CleanupStatus.Deleting;
             analysisResult.StartTime = DateTime.Now;
 
             try
             {
-                await Task.Run(() =>
+                if (config.OperationMode == CleanupOperationMode.MoveToFolder)
                 {
-                    DeleteItems(analysisResult, config, cancellationToken, progress);
-                }, cancellationToken);
+                    analysisResult.Status = CleanupStatus.Moving;
+                    await Task.Run(() =>
+                    {
+                        MoveItems(analysisResult, config, cancellationToken, progress);
+                    }, cancellationToken);
 
-                analysisResult.Status = CleanupStatus.Completed;
-                _logger?.LogInformation("Cleanup complete. Deleted {FileCount} files, {FolderCount} folders",
-                    analysisResult.FilesDeleted, analysisResult.FoldersDeleted);
+                    analysisResult.Status = CleanupStatus.Completed;
+                    _logger?.LogInformation("Move complete. Moved {FileCount} files, {FolderCount} folders",
+                        analysisResult.FilesMoved, analysisResult.FoldersMoved);
+                }
+                else
+                {
+                    analysisResult.Status = CleanupStatus.Deleting;
+                    await Task.Run(() =>
+                    {
+                        DeleteItems(analysisResult, config, cancellationToken, progress);
+                    }, cancellationToken);
+
+                    analysisResult.Status = CleanupStatus.Completed;
+                    _logger?.LogInformation("Cleanup complete. Deleted {FileCount} files, {FolderCount} folders",
+                        analysisResult.FilesDeleted, analysisResult.FoldersDeleted);
+                }
             }
             catch (OperationCanceledException)
             {
@@ -148,7 +165,9 @@ namespace FileAuditor.Core.Services
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (config.MaxDepth.HasValue && currentDepth >= config.MaxDepth.Value)
+            // MaxDepth=1 means "1 level deep from the root" (root + direct subdirs).
+            // Using strict greater-than so MaxDepth=0 = root only, MaxDepth=1 = root + 1 sub-level.
+            if (config.MaxDepth.HasValue && currentDepth > config.MaxDepth.Value)
                 return;
 
             var enumOptions = FileSystemHelper.GetEnumerationOptions(config.IncludeHiddenFiles);
@@ -247,19 +266,24 @@ namespace FileAuditor.Core.Services
             }
         }
 
+        // Case-insensitive, dot-normalizing extension matcher. Entries may arrive with or without
+        // a leading dot (e.g. "txt", ".txt", ".TXT") — both sides are normalised to lowercase+dot.
+        private static bool ExtensionMatches(string entry, string ext) =>
+            (entry.StartsWith('.') ? entry : "." + entry).ToLowerInvariant() == ext;
+
         private bool ShouldCleanupItem(string itemPath, bool isDirectory, CleanupConfiguration config)
         {
             try
             {
-                // Check file type filters (for files only)
+                // Check file type filters (for files only, case-insensitive, dot-normalised)
                 if (!isDirectory)
                 {
-                    var extension = Path.GetExtension(itemPath).ToLower();
+                    var extension = Path.GetExtension(itemPath).ToLowerInvariant();
 
-                    if (config.IncludeFileTypes.Any() && !config.IncludeFileTypes.Contains(extension))
+                    if (config.IncludeFileTypes.Any() && !config.IncludeFileTypes.Any(ft => ExtensionMatches(ft, extension)))
                         return false;
 
-                    if (config.ExcludeFileTypes.Contains(extension))
+                    if (config.ExcludeFileTypes.Any(ft => ExtensionMatches(ft, extension)))
                         return false;
                 }
 
@@ -295,63 +319,65 @@ namespace FileAuditor.Core.Services
             switch (config.DateMode)
             {
                 case CleanupDateMode.OlderThan:
+                {
                     if (!config.CutoffDate.HasValue)
                         return false;
 
-                    var olderThanCutoff = config.CutoffDate.Value.Date;
+                    var cutoff = config.CutoffDate.Value.Date;
                     if (config.CutoffTime.HasValue)
-                    {
-                        olderThanCutoff = olderThanCutoff.Add(config.CutoffTime.Value);
-                    }
+                        cutoff = cutoff.Add(config.CutoffTime.Value);
 
-                    return lastModified < olderThanCutoff;
+                    return lastModified < cutoff;
+                }
 
                 case CleanupDateMode.NewerThan:
+                {
                     if (!config.CutoffDate.HasValue)
                         return false;
 
-                    var newerThanCutoff = config.CutoffDate.Value.Date;
+                    var cutoff = config.CutoffDate.Value.Date;
                     if (config.CutoffTime.HasValue)
-                    {
-                        newerThanCutoff = newerThanCutoff.Add(config.CutoffTime.Value);
-                    }
+                        cutoff = cutoff.Add(config.CutoffTime.Value);
 
-                    return lastModified > newerThanCutoff;
+                    return lastModified > cutoff;
+                }
 
                 case CleanupDateMode.DateRange:
+                {
                     if (!config.StartDate.HasValue || !config.EndDate.HasValue)
                         return false;
 
-                    DateTime effectiveStartDate = config.StartDate.Value.Date;
-                    DateTime effectiveEndDate = config.EndDate.Value.Date;
+                    var effectiveStart = config.StartDate.Value.Date;
+                    var effectiveEnd   = config.EndDate.Value.Date;
 
                     if (config.IncludeTime)
                     {
                         if (config.StartTime.HasValue)
-                            effectiveStartDate = effectiveStartDate.Add(config.StartTime.Value);
+                            effectiveStart = effectiveStart.Add(config.StartTime.Value);
                         if (config.EndTime.HasValue)
-                            effectiveEndDate = effectiveEndDate.Add(config.EndTime.Value);
+                            effectiveEnd = effectiveEnd.Add(config.EndTime.Value);
 
-                        return lastModified >= effectiveStartDate && lastModified <= effectiveEndDate;
+                        return lastModified >= effectiveStart && lastModified <= effectiveEnd;
                     }
                     else
                     {
-                        return lastModified.Date >= effectiveStartDate.Date &&
-                               lastModified.Date <= effectiveEndDate.Date;
+                        return lastModified.Date >= effectiveStart && lastModified.Date <= effectiveEnd;
                     }
+                }
 
                 case CleanupDateMode.ExactDate:
+                {
                     if (!config.StartDate.HasValue)
                         return false;
 
-                    DateTime exactDate = config.StartDate.Value.Date;
+                    var exactDate = config.StartDate.Value.Date;
 
                     if (config.IncludeTime)
                     {
                         if (config.StartTime.HasValue)
                             exactDate = exactDate.Add(config.StartTime.Value);
 
-                        // Match exact date and time (within same hour/minute)
+                        // Match to the minute — seconds are not surfaced in the UI.
                         return lastModified.Date == exactDate.Date &&
                                lastModified.Hour == exactDate.Hour &&
                                lastModified.Minute == exactDate.Minute;
@@ -360,6 +386,7 @@ namespace FileAuditor.Core.Services
                     {
                         return lastModified.Date == exactDate.Date;
                     }
+                }
 
                 default:
                     return false;
@@ -441,6 +468,117 @@ namespace FileAuditor.Core.Services
             {
                 Directory.Delete(item.Path, recursive: true);
             }
+        }
+
+        private void MoveItems(
+            CleanupResult result,
+            CleanupConfiguration config,
+            CancellationToken cancellationToken,
+            IProgress<CleanupProgress>? progress)
+        {
+            if (string.IsNullOrWhiteSpace(result.DestinationPath))
+            {
+                result.Errors.Add(new ScanError
+                {
+                    ErrorType = ErrorType.UnknownError,
+                    Path = result.Path,
+                    Message = "No destination path specified for this source. Cannot move items."
+                });
+                return;
+            }
+
+            // Ensure the destination root exists before processing items.
+            Directory.CreateDirectory(result.DestinationPath);
+
+            int processed = 0;
+            int total = result.Items.Count;
+
+            foreach (var item in result.Items)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                try
+                {
+                    string destPath;
+                    if (item.IsDirectory)
+                    {
+                        destPath = MoveDirectory(item, result.Path, result.DestinationPath);
+                        result.FoldersMoved++;
+                    }
+                    else
+                    {
+                        destPath = MoveFile(item, result.Path, result.DestinationPath);
+                        result.FilesMoved++;
+                    }
+
+                    item.WasMoved = true;
+                    item.MovedToPath = destPath;
+                    _logger?.LogInformation("Moved: {Path} -> {Dest}", item.Path, destPath);
+                }
+                catch (Exception ex)
+                {
+                    item.MoveError = ex.Message;
+                    result.Errors.Add(new ScanError
+                    {
+                        ErrorType = ErrorType.UnknownError,
+                        Path = item.Path,
+                        Message = ex.Message,
+                        Exception = ex
+                    });
+                    _logger?.LogError(ex, "Failed to move: {Path}", item.Path);
+                }
+
+                processed++;
+                progress?.Report(new CleanupProgress
+                {
+                    CurrentPath = item.Path,
+                    CurrentOperation = $"Moving... {processed}/{total}",
+                    PercentComplete = (int)((processed / (double)total) * 100),
+                    ItemsProcessed = processed
+                });
+            }
+        }
+
+        private string MoveFile(CleanupItem item, string sourceRoot, string destRoot)
+        {
+            string relativePath = Path.GetRelativePath(sourceRoot, item.Path);
+            string destPath = Path.Combine(destRoot, relativePath);
+            string? destDir = Path.GetDirectoryName(destPath);
+
+            if (!string.IsNullOrEmpty(destDir))
+                Directory.CreateDirectory(destDir);
+
+            File.Move(item.Path, destPath, overwrite: true);
+            return destPath;
+        }
+
+        private string MoveDirectory(CleanupItem item, string sourceRoot, string destRoot)
+        {
+            string relativePath = Path.GetRelativePath(sourceRoot, item.Path);
+            string destPath = Path.Combine(destRoot, relativePath);
+
+            MoveDirectoryRecursive(item.Path, destPath);
+            return destPath;
+        }
+
+        private void MoveDirectoryRecursive(string sourceDir, string destDir)
+        {
+            Directory.CreateDirectory(destDir);
+
+            foreach (var file in Directory.EnumerateFiles(sourceDir))
+            {
+                string destFile = Path.Combine(destDir, Path.GetFileName(file));
+                File.Move(file, destFile, overwrite: true);
+            }
+
+            foreach (var subDir in Directory.EnumerateDirectories(sourceDir))
+            {
+                string destSubDir = Path.Combine(destDir, Path.GetFileName(subDir));
+                MoveDirectoryRecursive(subDir, destSubDir);
+            }
+
+            // Delete the now-empty source directory
+            Directory.Delete(sourceDir, recursive: true);
         }
     }
 }

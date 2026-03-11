@@ -122,6 +122,7 @@ namespace FileAuditor.CLI
             string? outputPath = null;
             bool verbose = false;
             bool? dryRun = null; // null means use config setting
+            string? moveDestination = null; // null means use config setting
 
             // Parse arguments
             for (int i = 0; i < args.Length; i++)
@@ -147,6 +148,11 @@ namespace FileAuditor.CLI
                     case "--execute":
                         dryRun = false;
                         break;
+                    case "--move":
+                    case "-m":
+                        if (i + 1 < args.Length)
+                            moveDestination = args[++i];
+                        break;
                     default:
                         if (string.IsNullOrEmpty(configPath))
                             configPath = args[i];
@@ -161,10 +167,10 @@ namespace FileAuditor.CLI
                 return 1;
             }
 
-            return await RunCleanupAsync(new FileInfo(configPath), outputPath, verbose, dryRun);
+            return await RunCleanupAsync(new FileInfo(configPath), outputPath, verbose, dryRun, moveDestination);
         }
 
-        static async Task<int> RunCleanupAsync(FileInfo configFile, string? outputPath, bool verbose, bool? dryRunOverride)
+        static async Task<int> RunCleanupAsync(FileInfo configFile, string? outputPath, bool verbose, bool? dryRunOverride, string? moveDestinationOverride = null)
         {
             try
             {
@@ -205,14 +211,45 @@ namespace FileAuditor.CLI
 
                 // Override dry run if specified
                 if (dryRunOverride.HasValue)
-                {
                     config.DryRun = dryRunOverride.Value;
+
+                // --move flag overrides operation mode and stamps the destination on each path.
+                if (moveDestinationOverride != null)
+                {
+                    config.OperationMode = CleanupOperationMode.MoveToFolder;
+                    foreach (var pathItem in config.TargetPaths)
+                        pathItem.DestinationPath = moveDestinationOverride;
+                }
+
+                // Validate that every valid path has a destination when in MoveToFolder mode.
+                if (config.OperationMode == CleanupOperationMode.MoveToFolder)
+                {
+                    var missingDest = config.TargetPaths
+                        .Where(p => p.IsValid && string.IsNullOrWhiteSpace(p.DestinationPath))
+                        .ToList();
+
+                    if (missingDest.Any())
+                    {
+                        Log.Error(
+                            "Move destination is required for all paths when OperationMode is MoveToFolder. " +
+                            "Use --move <destination> to apply a global destination, or include a destination " +
+                            "column in the config (source,destination format).");
+                        foreach (var p in missingDest)
+                            Log.Error("  Missing destination: {Path}", p.Path);
+                        return 1;
+                    }
                 }
 
                 Log.Information("Configuration loaded successfully");
                 Log.Information("Paths to clean: {PathCount}", config.TargetPaths.Count);
                 Log.Information("Target: {Target}", config.Target);
                 Log.Information("Date Mode: {DateMode}", config.DateMode);
+                Log.Information("Operation Mode: {OperationMode}", config.OperationMode);
+                if (config.OperationMode == CleanupOperationMode.MoveToFolder)
+                {
+                    foreach (var p in config.TargetPaths.Where(x => !string.IsNullOrWhiteSpace(x.DestinationPath)))
+                        Log.Information("  {Source} -> {Destination}", p.Path, p.DestinationPath);
+                }
 
                 // Log date criteria details
                 if (config.DateMode == CleanupDateMode.OlderThan || config.DateMode == CleanupDateMode.NewerThan)
@@ -257,11 +294,15 @@ namespace FileAuditor.CLI
 
                 if (config.DryRun)
                 {
-                    Log.Warning("⚠️  DRY RUN MODE - No files will be deleted");
+                    var dryVerb = config.OperationMode == CleanupOperationMode.MoveToFolder ? "moved" : "deleted";
+                    Log.Warning("⚠️  DRY RUN MODE - No files will be {Verb}", dryVerb);
                 }
                 else
                 {
-                    Log.Warning("⚠️  EXECUTE MODE - Files WILL BE DELETED!");
+                    if (config.OperationMode == CleanupOperationMode.MoveToFolder)
+                        Log.Warning("⚠️  EXECUTE MODE - Files WILL BE MOVED to per-path destinations!");
+                    else
+                        Log.Warning("⚠️  EXECUTE MODE - Files WILL BE DELETED!");
                 }
 
                 // Create services
@@ -318,7 +359,7 @@ namespace FileAuditor.CLI
 
                 foreach (var result in results)
                 {
-                    if (result.Status == CleanupStatus.ReadyToDelete)
+                    if (result.Status == CleanupStatus.ReadyToDelete || result.Status == CleanupStatus.ReadyToMove)
                     {
                         Log.Information("  ✓ {Path}: {Files} files, {Folders} folders",
                             result.Path,
@@ -343,21 +384,41 @@ namespace FileAuditor.CLI
                     }
                 }
 
-                // Phase 2: Execute cleanup (if not dry run)
+                // Phase 2: Execute (if not dry run)
                 if (!config.DryRun)
                 {
-                    Log.Information("Phase 2: Executing cleanup...");
+                    bool isMoveMode = config.OperationMode == CleanupOperationMode.MoveToFolder;
+                    Log.Information("Phase 2: {Operation}...",
+                        isMoveMode ? "Moving files to per-path destinations" : "Executing cleanup");
+
+                    // Stamp DestinationPath onto each result from the matching PathItem.
+                    if (isMoveMode)
+                    {
+                        var destLookup = config.TargetPaths
+                            .Where(p => !string.IsNullOrWhiteSpace(p.DestinationPath))
+                            .ToDictionary(p => p.Path, p => p.DestinationPath!, StringComparer.OrdinalIgnoreCase);
+
+                        foreach (var r in results)
+                        {
+                            if (destLookup.TryGetValue(r.Path, out var dest))
+                                r.DestinationPath = dest;
+                        }
+                    }
 
                     // Confirmation check
                     if (config.RequireConfirmation)
                     {
-                        Log.Warning("About to delete {Files} files and {Folders} folders. Type 'YES' to confirm:",
-                            totalFiles, totalFolders);
+                        if (isMoveMode)
+                            Log.Warning("About to move {Files} files and {Folders} folders to per-path destinations. Type 'YES' to confirm:",
+                                totalFiles, totalFolders);
+                        else
+                            Log.Warning("About to delete {Files} files and {Folders} folders. Type 'YES' to confirm:",
+                                totalFiles, totalFolders);
 
                         var confirmation = Console.ReadLine();
                         if (confirmation?.Trim().ToUpper() != "YES")
                         {
-                            Log.Information("Cleanup cancelled by user");
+                            Log.Information("Operation cancelled by user");
                             return 0;
                         }
                     }
@@ -371,12 +432,22 @@ namespace FileAuditor.CLI
                             progress);
                     }
 
-                    var deletedFiles = results.Sum(r => r.FilesDeleted);
-                    var deletedFolders = results.Sum(r => r.FoldersDeleted);
-
-                    Log.Information("Cleanup complete:");
-                    Log.Information("  Files deleted: {Files:N0}", deletedFiles);
-                    Log.Information("  Folders deleted: {Folders:N0}", deletedFolders);
+                    if (isMoveMode)
+                    {
+                        var movedFiles = results.Sum(r => r.FilesMoved);
+                        var movedFolders = results.Sum(r => r.FoldersMoved);
+                        Log.Information("Move complete:");
+                        Log.Information("  Files moved: {Files:N0}", movedFiles);
+                        Log.Information("  Folders moved: {Folders:N0}", movedFolders);
+                    }
+                    else
+                    {
+                        var deletedFiles = results.Sum(r => r.FilesDeleted);
+                        var deletedFolders = results.Sum(r => r.FoldersDeleted);
+                        Log.Information("Cleanup complete:");
+                        Log.Information("  Files deleted: {Files:N0}", deletedFiles);
+                        Log.Information("  Folders deleted: {Folders:N0}", deletedFolders);
+                    }
                 }
 
                 // Export results
@@ -392,19 +463,35 @@ namespace FileAuditor.CLI
                 Log.Information("Exporting results to: {OutputPath}", finalOutputPath);
 
                 // Export to CSV
+                bool isMoveExport = config.OperationMode == CleanupOperationMode.MoveToFolder;
                 using var writer = new StreamWriter(finalOutputPath);
-                await writer.WriteLineAsync("Path,Type,Last Modified,Size (bytes),Status,Error");
+
+                if (isMoveExport)
+                    await writer.WriteLineAsync("Path,Type,Last Modified,Size (bytes),Status,Moved To,Error");
+                else
+                    await writer.WriteLineAsync("Path,Type,Last Modified,Size (bytes),Status,Error");
 
                 foreach (var result in results)
                 {
                     foreach (var item in result.Items)
                     {
                         var type = item.IsDirectory ? "Folder" : "File";
-                        var status = item.WasDeleted ? "Deleted" : "Identified";
-                        var error = item.DeletionError ?? "";
 
-                        await writer.WriteLineAsync(
-                            $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{status},\"{error}\"");
+                        if (isMoveExport)
+                        {
+                            var status = item.WasMoved ? "Moved" : "Identified";
+                            var movedTo = item.MovedToPath ?? "";
+                            var error = item.MoveError ?? "";
+                            await writer.WriteLineAsync(
+                                $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{status},\"{movedTo}\",\"{error}\"");
+                        }
+                        else
+                        {
+                            var status = item.WasDeleted ? "Deleted" : "Identified";
+                            var error = item.DeletionError ?? "";
+                            await writer.WriteLineAsync(
+                                $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{status},\"{error}\"");
+                        }
                     }
                 }
 
@@ -709,12 +796,14 @@ namespace FileAuditor.CLI
             Console.WriteLine("  -c, --config <file>    Path to the JSON cleanup configuration file (required)");
             Console.WriteLine("  -o, --output <file>    Override output file path");
             Console.WriteLine("  --verbose              Enable verbose logging");
-            Console.WriteLine("  --dry-run              Preview only, do not delete (overrides config)");
-            Console.WriteLine("  --execute              Execute deletion (overrides config dry-run setting)");
+            Console.WriteLine("  --dry-run              Preview only, do not delete/move (overrides config)");
+            Console.WriteLine("  --execute              Execute operation (overrides config dry-run setting)");
+            Console.WriteLine("  -m, --move <folder>    Override: switch to MoveToFolder mode and use <folder>");
             Console.WriteLine();
             Console.WriteLine("CONFIGURATION FILE:");
             Console.WriteLine("  The cleanup configuration file defines:");
-            Console.WriteLine("  • Target paths to clean");
+            Console.WriteLine("  • Target paths to clean — plain path, or source,destination pairs");
+            Console.WriteLine("    (two-column format, split on first comma; destination is auto-created)");
             Console.WriteLine("  • What to clean (files only, folders only, or both)");
             Console.WriteLine("  • Date criteria:");
             Console.WriteLine("    - AnyDate: No date filtering");
@@ -728,6 +817,8 @@ namespace FileAuditor.CLI
             Console.WriteLine("    - Dry run mode (preview only)");
             Console.WriteLine("    - Confirmation required");
             Console.WriteLine("    - Move to Recycle Bin vs. permanent delete");
+            Console.WriteLine("  • Operation mode: Delete (default) or MoveToFolder");
+            Console.WriteLine("    - MoveToFolder: supply source,destination per path line, or use --move <dest>");
             Console.WriteLine();
             Console.WriteLine("  You can create and export cleanup configurations using the File Auditor WPF");
             Console.WriteLine("  application's Cleanup tab.");

@@ -82,11 +82,26 @@ Two-phase workflow: **Analyze** (dry-run preview) then **Execute**.
 | DateRange | Last-modified between two dates (optional time precision) |
 | ExactDate | Last-modified on a specific date (optional time) |
 
+**Operation modes:**
+
+| Mode | Behavior |
+|---|---|
+| Delete | Remove items (to Recycle Bin or permanently) |
+| Move to Folder | Relocate items to a per-path destination, preserving relative structure |
+
+**Paths to Clean format:**
+- Delete mode: one source path per line — `C:\Source`
+- Move to Folder mode: source and destination separated by a comma — `C:\Source,D:\Archive`
+
+**Date/time quick-set:**
+- Every date picker has a **📅 Today** button that sets both the date and its associated time fields to the current moment
+- All date/time fields default to the current date and time when the application starts
+
 **Additional options:**
 - Target files only, folders only, or both
-- File type include/exclude filters
+- File type include/exclude filters (case-insensitive, dot-optional — `txt`, `.txt`, and `.TXT` all match)
 - Regex-based exclusion patterns
-- Move to Recycle Bin vs. permanent delete
+- Move to Recycle Bin vs. permanent delete (Delete mode only)
 - Confirmation dialog before execution
 - Auto-export of cleanup results to a timestamped CSV in the Logs folder
 
@@ -95,11 +110,13 @@ Two-phase workflow: **Analyze** (dry-run preview) then **Execute**.
 The CLI is designed for use with Windows Task Scheduler for unattended, scheduled audits.
 
 ```
-FileAuditor.CLI scan --config <config.json> [--output <path>] [--verbose]
-FileAuditor.CLI cleanup --config <config.json> [--dry-run | --execute] [--verbose]
-FileAuditor.CLI help [scan | cleanup]
+FileAuditor.CLI scan    --config <config.json> [--output <path>] [--verbose]
+FileAuditor.CLI cleanup --config <config.json> [--dry-run | --execute] [--verbose] [--move <dest>]
+FileAuditor.CLI help    [scan | cleanup]
 FileAuditor.CLI version
 ```
+
+`--move <dest>` switches the cleanup command to Move to Folder mode, sending all matched items to `<dest>` while preserving relative path structure. For per-path destinations, set `DestinationPath` on each `PathItem` in the JSON config directly.
 
 Configurations saved from the WPF application are interchangeable with the CLI.
 
@@ -195,16 +212,24 @@ The WPF application uses Microsoft.Extensions.DependencyInjection with construct
 
 ---
 
+## Quality of Life
+
+- **File → Clear All**: Resets both the File Counter and Cleanup tabs to their default settings in one step. Prompts for confirmation and is blocked while any operation is in progress.
+- **📅 Today buttons**: Each date picker in the Cleanup tab has a "Today" button that sets both the date and its time fields to the current moment — ideal for "delete/move everything newer than right now" or "starting from this instant" scenarios.
+- **Current time defaults**: All date/time fields in the Cleanup tab start at today's current time when the app opens, not at midnight or a fixed offset.
+- **Case-insensitive file type filters**: Extension entries like `TXT`, `.txt`, and `.TXT` are all treated identically in both the File Counter and Cleanup tabs.
+
+---
+
 ## In-App Help
 
 The WPF application includes a built-in five-tab help window (Help menu) covering:
 
-- Getting Started
-- File Counter options and Box Drive scanning
-- Cleanup workflow, date modes, and safety options
+- Getting Started — overview, features, and quick start
+- File Counter — depth options, file type filters, Box Drive scanning
+- Cleanup — workflow, date modes, Move to Folder, Today/Now buttons, Clear All, safety options
 - CLI usage and Windows Task Scheduler examples
 - Box Drive integration details
-- FAQ and troubleshooting
 
 ---
 

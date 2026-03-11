@@ -259,6 +259,38 @@ namespace FileAuditor.WPF.ViewModels
             StatusMessage = "Results cleared";
         }
 
+        /// <summary>
+        /// Resets every field on the File Counter tab back to its default state.
+        /// Blocked while a scan is in progress.
+        /// </summary>
+        [RelayCommand]
+        private void ClearAll()
+        {
+            if (IsScanning)
+            {
+                MessageBox.Show("A scan is currently in progress. Please cancel it before clearing.",
+                    "Scan In Progress", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            PathsText = string.Empty;
+            ScanResults.Clear();
+            SelectedScanResult = null;
+            SelectedCountMode = CountMode.Both;
+            IsRecursive = true;
+            MaxDepth = 1;
+            ParallelThreadCount = 4;
+            IncludeHiddenFiles = false;
+            BoxDriveRefreshEnabled = true;
+            BoxDriveRefreshTimeout = 30;
+            EnableFileTypeBreakdown = true;
+            IncludeFileTypes = string.Empty;
+            ExcludeFileTypes = string.Empty;
+            SelectedConfiguration = null;
+            StatusMessage = "Ready";
+            ProgressPercentage = 0;
+        }
+
         [RelayCommand]
         private void BrowseFolder()
         {
@@ -472,7 +504,7 @@ namespace FileAuditor.WPF.ViewModels
             return input.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(s => s.Trim())
                 .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => s.StartsWith(".") ? s : "." + s)
+                .Select(s => (s.StartsWith(".") ? s : "." + s).ToLowerInvariant())
                 .ToList();
         }
     }

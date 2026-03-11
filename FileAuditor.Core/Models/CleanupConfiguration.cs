@@ -39,6 +39,9 @@ namespace FileAuditor.Core.Models
         public bool RequireConfirmation { get; set; } = true;
         public bool MoveToRecycleBin { get; set; } = true;
 
+        // Operation mode
+        public CleanupOperationMode OperationMode { get; set; } = CleanupOperationMode.Delete;
+
         public DateTime CreatedDate { get; set; } = DateTime.Now;
 
         public CleanupConfiguration Clone()
@@ -65,6 +68,7 @@ namespace FileAuditor.Core.Models
                 ExcludePatterns = new List<string>(ExcludePatterns),
                 RequireConfirmation = RequireConfirmation,
                 MoveToRecycleBin = MoveToRecycleBin,
+                OperationMode = OperationMode,
                 CreatedDate = CreatedDate
             };
         }

@@ -86,6 +86,61 @@ namespace FileAuditor.Core.Helpers
             return ValidateMultiplePaths(paths);
         }
 
+        /// <summary>
+        /// Parses cleanup paths from text that may use a two-column CSV format
+        /// (source,destination per line). The source column is validated for existence;
+        /// the destination column is stored as-is (format-only, existence is not checked
+        /// because it will be auto-created at execution time).
+        /// Single-column lines are treated as source-only entries.
+        /// Duplicate source paths are deduplicated (first occurrence wins).
+        /// </summary>
+        public static List<PathItem> ParseCleanupPathsFromText(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return new List<PathItem>();
+
+            var lines = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            var result = new List<PathItem>();
+            var seenSources = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var line in lines)
+            {
+                var trimmed = line.Trim();
+                if (string.IsNullOrWhiteSpace(trimmed))
+                    continue;
+
+                // Split on the first comma only so paths that contain commas still work.
+                var commaIdx = trimmed.IndexOf(',');
+                string sourcePart;
+                string? destPart;
+
+                if (commaIdx >= 0)
+                {
+                    sourcePart = trimmed.Substring(0, commaIdx).Trim();
+                    var rawDest = trimmed.Substring(commaIdx + 1).Trim();
+                    destPart = string.IsNullOrWhiteSpace(rawDest) ? null : rawDest;
+                }
+                else
+                {
+                    sourcePart = trimmed;
+                    destPart = null;
+                }
+
+                if (string.IsNullOrWhiteSpace(sourcePart))
+                    continue;
+
+                // Deduplicate by source path.
+                if (!seenSources.Add(sourcePart))
+                    continue;
+
+                var pathItem = ValidatePath(sourcePart);
+                pathItem.DestinationPath = destPart;
+                result.Add(pathItem);
+            }
+
+            return result;
+        }
+
         public static bool IsNetworkPathAvailable(string path)
         {
             if (!path.StartsWith(@"\\"))

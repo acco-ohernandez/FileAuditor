@@ -43,10 +43,10 @@ namespace FileAuditor.WPF.ViewModels
 
 
         [ObservableProperty]
-        private DateTime? _startDate = null;
+        private DateTime? _startDate = DateTime.Now;
 
         [ObservableProperty]
-        private DateTime? _endDate = null;
+        private DateTime? _endDate = DateTime.Now;
 
         [ObservableProperty]
         private bool _isRecursive = true;
@@ -65,6 +65,26 @@ namespace FileAuditor.WPF.ViewModels
 
         [ObservableProperty]
         private bool _moveToRecycleBin = true;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsDeleteMode))]
+        [NotifyPropertyChangedFor(nameof(IsMoveMode))]
+        [NotifyPropertyChangedFor(nameof(ExecuteButtonLabel))]
+        [NotifyPropertyChangedFor(nameof(PathsHintText))]
+        private CleanupOperationMode _operationMode = CleanupOperationMode.Delete;
+
+        public bool IsDeleteMode => _operationMode == CleanupOperationMode.Delete;
+        public bool IsMoveMode => _operationMode == CleanupOperationMode.MoveToFolder;
+        public string ExecuteButtonLabel => _operationMode == CleanupOperationMode.MoveToFolder
+            ? "Execute Move" : "Execute Cleanup";
+
+        /// <summary>
+        /// Hint text shown above the Paths to Clean text box.
+        /// Changes to explain the two-column format when in MoveToFolder mode.
+        /// </summary>
+        public string PathsHintText => _operationMode == CleanupOperationMode.MoveToFolder
+            ? "Enter paths (source,destination per line — one pair per line):"
+            : "Enter paths (one per line):";
 
         [ObservableProperty]
         private string _includeFileTypes = string.Empty;
@@ -123,7 +143,7 @@ namespace FileAuditor.WPF.ViewModels
         [ObservableProperty] private string _endTimeAmPm = "PM";
 
         [ObservableProperty]
-        private DateTime? _cutoffDate = DateTime.Now.AddDays(-30);
+        private DateTime? _cutoffDate = DateTime.Now;
 
         [ObservableProperty]
         private TimeSpan _cutoffTime = new TimeSpan(0, 0, 0);
@@ -225,6 +245,12 @@ namespace FileAuditor.WPF.ViewModels
             CleanupDateMode.ExactDate
         };
 
+        public ObservableCollection<CleanupOperationMode> OperationModes { get; } = new()
+        {
+            CleanupOperationMode.Delete,
+            CleanupOperationMode.MoveToFolder
+        };
+
         // Add to constructor injection
         private readonly IScanHistoryService _historyService;
         private readonly IExportService _exportService;
@@ -240,7 +266,108 @@ namespace FileAuditor.WPF.ViewModels
             _exportService = exportService;
             _logger = logger;
 
+            SetCurrentTimeDefaults();
             _ = LoadSavedConfigurations();
+        }
+
+        /// <summary>
+        /// Sets all six time string fields (cutoff, start, end) to the current wall-clock time.
+        /// Called on startup and whenever ClearAll resets the form.
+        /// </summary>
+        private void SetCurrentTimeDefaults()
+        {
+            var now = DateTime.Now;
+            var (h, m, ap) = To12Hour(new TimeSpan(now.Hour, now.Minute, 0));
+            CutoffTimeHour = h;
+            CutoffTimeMinute = m;
+            CutoffTimeAmPm = ap;
+            StartTimeHour = h;
+            StartTimeMinute = m;
+            StartTimeAmPm = ap;
+            EndTimeHour = h;
+            EndTimeMinute = m;
+            EndTimeAmPm = ap;
+        }
+
+        /// <summary>
+        /// Sets the Cutoff Date and Cutoff Time fields to the current date/time.
+        /// </summary>
+        [RelayCommand]
+        private void SetCutoffToNow()
+        {
+            var now = DateTime.Now;
+            CutoffDate = now;
+            var (h, m, ap) = To12Hour(new TimeSpan(now.Hour, now.Minute, 0));
+            CutoffTimeHour = h;
+            CutoffTimeMinute = m;
+            CutoffTimeAmPm = ap;
+        }
+
+        /// <summary>
+        /// Sets the Start Date and Start Time fields to the current date/time.
+        /// </summary>
+        [RelayCommand]
+        private void SetStartToNow()
+        {
+            var now = DateTime.Now;
+            StartDate = now;
+            var (h, m, ap) = To12Hour(new TimeSpan(now.Hour, now.Minute, 0));
+            StartTimeHour = h;
+            StartTimeMinute = m;
+            StartTimeAmPm = ap;
+        }
+
+        /// <summary>
+        /// Sets the End Date and End Time fields to the current date/time.
+        /// </summary>
+        [RelayCommand]
+        private void SetEndToNow()
+        {
+            var now = DateTime.Now;
+            EndDate = now;
+            var (h, m, ap) = To12Hour(new TimeSpan(now.Hour, now.Minute, 0));
+            EndTimeHour = h;
+            EndTimeMinute = m;
+            EndTimeAmPm = ap;
+        }
+
+        /// <summary>
+        /// Resets every field on the Cleanup tab back to its default state.
+        /// Blocked while Analyze or Execute is in progress.
+        /// </summary>
+        [RelayCommand]
+        private void ClearAll()
+        {
+            if (IsAnalyzing || IsDeleting)
+            {
+                MessageBox.Show("An operation is currently in progress. Please cancel it before clearing.",
+                    "Operation In Progress", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            PathsText = string.Empty;
+            SelectedTarget = CleanupTarget.FilesOnly;
+            SelectedDateMode = CleanupDateMode.AnyDate;
+            CutoffDate = DateTime.Now;
+            StartDate = DateTime.Now;
+            EndDate = DateTime.Now;
+            IncludeTime = false;
+            IsRecursive = true;
+            MaxDepth = 1;
+            IncludeHiddenFiles = false;
+            DryRun = true;
+            RequireConfirmation = true;
+            MoveToRecycleBin = true;
+            OperationMode = CleanupOperationMode.Delete;
+            IncludeFileTypes = string.Empty;
+            ExcludeFileTypes = string.Empty;
+            ExcludePatterns = string.Empty;
+            AnalysisResults.Clear();
+            SelectedResult = null;
+            _lastAnalysisConfig = null;
+            SelectedConfiguration = null;
+            SetCurrentTimeDefaults();
+            StatusMessage = "Ready";
         }
 
         [RelayCommand]
@@ -280,7 +407,10 @@ namespace FileAuditor.WPF.ViewModels
                     if (!string.IsNullOrWhiteSpace(PathsText))
                         PathsText += Environment.NewLine;
 
-                    PathsText += string.Join(Environment.NewLine, paths.Select(p => p.Path));
+                    PathsText += string.Join(Environment.NewLine, paths.Select(p =>
+                        string.IsNullOrWhiteSpace(p.DestinationPath)
+                            ? p.Path
+                            : $"{p.Path},{p.DestinationPath}"));
 
                     StatusMessage = $"Imported {paths.Count} path(s) from CSV";
                 }
@@ -312,15 +442,40 @@ namespace FileAuditor.WPF.ViewModels
                 AnalysisResults.Clear();
                 _lastAnalysisConfig = null;
 
-                var paths = PathsText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(p => p.Trim())
-                    .Where(p => !string.IsNullOrWhiteSpace(p))
-                    .Distinct()
-                    .ToList();
+                // Parse paths using the two-column cleanup parser so DestinationPath is populated.
+                var parsedPaths = PathValidator.ParseCleanupPathsFromText(PathsText);
+
+                if (!parsedPaths.Any(p => p.IsValid))
+                {
+                    MessageBox.Show("No valid paths found. Please check the entered paths.",
+                        "No Valid Paths", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // In MoveToFolder mode every valid path must have a destination.
+                if (OperationMode == CleanupOperationMode.MoveToFolder)
+                {
+                    var missingDest = parsedPaths
+                        .Where(p => p.IsValid && string.IsNullOrWhiteSpace(p.DestinationPath))
+                        .ToList();
+
+                    if (missingDest.Any())
+                    {
+                        MessageBox.Show(
+                            "Move to Folder mode requires a destination for each path.\n\n" +
+                            "Use the format:  source,destination  (one pair per line).\n\n" +
+                            "Paths missing a destination:\n" +
+                            string.Join("\n", missingDest.Select(p => "  • " + p.Path)),
+                            "Destination Required", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+                }
 
                 // Snapshot config now so Execute uses exactly what was analyzed.
-                var config = CreateConfiguration();
+                var config = CreateConfiguration(parsedPaths);
                 _lastAnalysisConfig = config;
+
+                var validPaths = parsedPaths.Where(p => p.IsValid).ToList();
 
                 _analyzeCancellationTokenSource = new CancellationTokenSource();
 
@@ -330,13 +485,21 @@ namespace FileAuditor.WPF.ViewModels
                 });
 
                 var results = await _cleanupService.AnalyzeMultiplePathsAsync(
-                    paths,
+                    validPaths.Select(p => p.Path).ToList(),
                     config,
                     _analyzeCancellationTokenSource.Token,
                     progress);
 
+                // Stamp the per-path destination onto each CleanupResult.
+                var destLookup = validPaths
+                    .Where(p => !string.IsNullOrWhiteSpace(p.DestinationPath))
+                    .ToDictionary(p => p.Path, p => p.DestinationPath!, StringComparer.OrdinalIgnoreCase);
+
                 foreach (var result in results)
                 {
+                    if (destLookup.TryGetValue(result.Path, out var dest))
+                        result.DestinationPath = dest;
+
                     AnalysisResults.Add(result);
                 }
 
@@ -385,7 +548,8 @@ namespace FileAuditor.WPF.ViewModels
 
             if (DryRun)
             {
-                MessageBox.Show("Dry Run mode is enabled. No files will be deleted.\n\nDisable Dry Run to perform actual cleanup.",
+                var dryRunAction = OperationMode == CleanupOperationMode.MoveToFolder ? "moved" : "deleted";
+                MessageBox.Show($"Dry Run mode is enabled. No files will be {dryRunAction}.\n\nDisable Dry Run to perform the actual operation.",
                     "Dry Run Mode", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
@@ -394,7 +558,12 @@ namespace FileAuditor.WPF.ViewModels
             var totalFolders = AnalysisResults.Sum(r => r.FoldersIdentified);
             var totalSize = AnalysisResults.Sum(r => r.TotalSizeBytes);
 
-            var action = MoveToRecycleBin ? "move to recycle bin" : "permanently delete";
+            string action;
+            if (OperationMode == CleanupOperationMode.MoveToFolder)
+                action = "move to per-path destinations";
+            else
+                action = MoveToRecycleBin ? "move to recycle bin" : "permanently delete";
+
             var message = $"Are you sure you want to {action}:\n\n" +
                           $"• {totalFiles} file(s)\n" +
                           $"• {totalFolders} folder(s)\n" +
@@ -413,7 +582,8 @@ namespace FileAuditor.WPF.ViewModels
             try
             {
                 IsDeleting = true;
-                StatusMessage = "Deleting items...";
+                StatusMessage = OperationMode == CleanupOperationMode.MoveToFolder
+                    ? "Moving items..." : "Deleting items...";
 
                 // Use the config snapshot from Analyze so Execute is consistent with the preview.
                 var config = _lastAnalysisConfig!;
@@ -433,8 +603,13 @@ namespace FileAuditor.WPF.ViewModels
                         progress);
                 }
 
-                var deletedFiles = AnalysisResults.Sum(r => r.FilesDeleted);
-                var deletedFolders = AnalysisResults.Sum(r => r.FoldersDeleted);
+                bool isMoveMode = OperationMode == CleanupOperationMode.MoveToFolder;
+                var processedFiles = isMoveMode
+                    ? AnalysisResults.Sum(r => r.FilesMoved)
+                    : AnalysisResults.Sum(r => r.FilesDeleted);
+                var processedFolders = isMoveMode
+                    ? AnalysisResults.Sum(r => r.FoldersMoved)
+                    : AnalysisResults.Sum(r => r.FoldersDeleted);
 
                 // Auto-export to logs folder
                 var logsFolder = Path.Combine(
@@ -443,46 +618,69 @@ namespace FileAuditor.WPF.ViewModels
 
                 Directory.CreateDirectory(logsFolder);
 
+                var opLabel = isMoveMode ? "move" : "cleanup";
                 var autoExportPath = Path.Combine(logsFolder,
-                    $"cleanup_results_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
+                    $"{opLabel}_results_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
 
                 try
                 {
                     using var writer = new StreamWriter(autoExportPath);
-                    await writer.WriteLineAsync("Path,Type,Last Modified,Size (bytes),Status,Error");
+
+                    if (isMoveMode)
+                        await writer.WriteLineAsync("Path,Type,Last Modified,Size (bytes),Status,Moved To,Error");
+                    else
+                        await writer.WriteLineAsync("Path,Type,Last Modified,Size (bytes),Status,Error");
 
                     foreach (var analysisResult in AnalysisResults)
                     {
                         foreach (var item in analysisResult.Items)
                         {
                             var type = item.IsDirectory ? "Folder" : "File";
-                            var status = item.WasDeleted ? "Deleted" : "Identified";
-                            var error = item.DeletionError ?? "";
 
-                            await writer.WriteLineAsync(
-                                $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{status},\"{error}\"");
+                            if (isMoveMode)
+                            {
+                                var status = item.WasMoved ? "Moved" : "Identified";
+                                var movedTo = item.MovedToPath ?? "";
+                                var error = item.MoveError ?? "";
+                                await writer.WriteLineAsync(
+                                    $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{status},\"{movedTo}\",\"{error}\"");
+                            }
+                            else
+                            {
+                                var status = item.WasDeleted ? "Deleted" : "Identified";
+                                var error = item.DeletionError ?? "";
+                                await writer.WriteLineAsync(
+                                    $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{status},\"{error}\"");
+                            }
                         }
                     }
 
-                    StatusMessage = $"Cleanup complete: {deletedFiles} files, {deletedFolders} folders deleted";
+                    var verb = isMoveMode ? "moved" : "deleted";
+                    StatusMessage = $"Operation complete: {processedFiles} files, {processedFolders} folders {verb}";
 
-                    MessageBox.Show($"Cleanup completed successfully!\n\n" +
-                                   $"Deleted: {deletedFiles} files, {deletedFolders} folders\n\n" +
+                    var title = isMoveMode ? "Move Complete" : "Cleanup Complete";
+                    var summary = isMoveMode
+                        ? $"Moved: {processedFiles} files, {processedFolders} folders"
+                        : $"Deleted: {processedFiles} files, {processedFolders} folders";
+
+                    MessageBox.Show($"Operation completed successfully!\n\n" +
+                                   $"{summary}\n\n" +
                                    $"Results exported to:\n{autoExportPath}\n\n" +
                                    $"Logs folder: {logsFolder}",
-                        "Cleanup Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                        title, MessageBoxButton.OK, MessageBoxImage.Information);
 
-                    _logger.LogInformation("Cleanup completed. {Files} files, {Folders} folders deleted. Results: {Path}",
-                        deletedFiles, deletedFolders, autoExportPath);
+                    _logger.LogInformation("Operation completed. {Files} files, {Folders} folders {Verb}. Results: {Path}",
+                        processedFiles, processedFolders, verb, autoExportPath);
                 }
                 catch (Exception exportEx)
                 {
-                    _logger.LogError(exportEx, "Error auto-exporting cleanup results");
+                    _logger.LogError(exportEx, "Error auto-exporting results");
 
-                    MessageBox.Show($"Cleanup completed successfully!\n\n" +
-                                   $"Deleted: {deletedFiles} files, {deletedFolders} folders\n\n" +
+                    var verb2 = isMoveMode ? "moved" : "deleted";
+                    MessageBox.Show($"Operation completed successfully!\n\n" +
+                                   $"Processed: {processedFiles} files, {processedFolders} folders {verb2}\n\n" +
                                    $"Warning: Could not export results:\n{exportEx.Message}",
-                        "Cleanup Complete", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        "Operation Complete", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
             }
             catch (OperationCanceledException)
@@ -544,17 +742,31 @@ namespace FileAuditor.WPF.ViewModels
             {
                 try
                 {
+                    bool isMoveExport = OperationMode == CleanupOperationMode.MoveToFolder;
+
                     using var writer = new StreamWriter(dialog.FileName);
-                    await writer.WriteLineAsync("Path,Type,Last Modified,Size,Status");
+                    if (isMoveExport)
+                        await writer.WriteLineAsync("Path,Type,Last Modified,Size,Status,Moved To");
+                    else
+                        await writer.WriteLineAsync("Path,Type,Last Modified,Size,Status");
 
                     foreach (var result in AnalysisResults)
                     {
                         foreach (var item in result.Items)
                         {
                             var type = item.IsDirectory ? "Folder" : "File";
-                            var status = item.WasDeleted ? "Deleted" : "Identified";
-                            await writer.WriteLineAsync(
-                                $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{status}");
+                            if (isMoveExport)
+                            {
+                                var status = item.WasMoved ? "Moved" : "Identified";
+                                await writer.WriteLineAsync(
+                                    $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{status},\"{item.MovedToPath ?? ""}\"");
+                            }
+                            else
+                            {
+                                var status = item.WasDeleted ? "Deleted" : "Identified";
+                                await writer.WriteLineAsync(
+                                    $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{status}");
+                            }
                         }
                     }
 
@@ -588,12 +800,10 @@ namespace FileAuditor.WPF.ViewModels
 
             try
             {
-                var pathItems = PathValidator.ParsePathsFromText(PathsText);
-
                 var config = new CleanupConfiguration
                 {
                     Name = configName,
-                    TargetPaths = pathItems,
+                    TargetPaths = PathValidator.ParseCleanupPathsFromText(PathsText),
                     Target = SelectedTarget,
                     DateMode = SelectedDateMode,
                     CutoffDate = CutoffDate,
@@ -609,6 +819,7 @@ namespace FileAuditor.WPF.ViewModels
                     DryRun = DryRun,
                     RequireConfirmation = RequireConfirmation,
                     MoveToRecycleBin = MoveToRecycleBin,
+                    OperationMode = OperationMode,
                     IncludeFileTypes = ParseList(IncludeFileTypes),
                     ExcludeFileTypes = ParseList(ExcludeFileTypes),
                     ExcludePatterns = ParseList(ExcludePatterns)
@@ -650,7 +861,7 @@ namespace FileAuditor.WPF.ViewModels
             }
             else
             {
-                var pathItems = PathValidator.ParsePathsFromText(PathsText);
+                var pathItems = PathValidator.ParseCleanupPathsFromText(PathsText);
                 if (!pathItems.Any(p => p.IsValid))
                 {
                     errors.Add("No valid paths found");
@@ -703,7 +914,12 @@ namespace FileAuditor.WPF.ViewModels
             if (SelectedConfiguration == null)
                 return;
 
-            PathsText = string.Join(Environment.NewLine, SelectedConfiguration.TargetPaths.Select(p => p.Path));
+            // Reconstruct the two-column text format so DestinationPath round-trips correctly.
+            PathsText = string.Join(Environment.NewLine,
+                SelectedConfiguration.TargetPaths.Select(p =>
+                    string.IsNullOrWhiteSpace(p.DestinationPath)
+                        ? p.Path
+                        : $"{p.Path},{p.DestinationPath}"));
             SelectedTarget = SelectedConfiguration.Target;
             SelectedDateMode = SelectedConfiguration.DateMode;
 
@@ -745,6 +961,7 @@ namespace FileAuditor.WPF.ViewModels
             DryRun = SelectedConfiguration.DryRun;
             RequireConfirmation = SelectedConfiguration.RequireConfirmation;
             MoveToRecycleBin = SelectedConfiguration.MoveToRecycleBin;
+            OperationMode = SelectedConfiguration.OperationMode;
             IncludeFileTypes = string.Join(", ", SelectedConfiguration.IncludeFileTypes);
             ExcludeFileTypes = string.Join(", ", SelectedConfiguration.ExcludeFileTypes);
             ExcludePatterns = string.Join("\n", SelectedConfiguration.ExcludePatterns);
@@ -770,7 +987,12 @@ namespace FileAuditor.WPF.ViewModels
             }
         }
 
-        public CleanupConfiguration CreateConfiguration()
+        /// <summary>
+        /// Builds a <see cref="CleanupConfiguration"/> from current ViewModel state.
+        /// Pass pre-parsed <paramref name="pathItems"/> from <see cref="Analyze"/> to avoid
+        /// parsing the text twice; when <c>null</c> the text is re-parsed internally (e.g. for SaveConfiguration).
+        /// </summary>
+        public CleanupConfiguration CreateConfiguration(List<PathItem>? pathItems = null)
         {
             // Always recompute TimeSpans from the 12-hour string fields immediately before
             // building the config.  This guarantees the correct 24-hour value is captured
@@ -785,7 +1007,7 @@ namespace FileAuditor.WPF.ViewModels
 
             var config = new CleanupConfiguration
             {
-                TargetPaths = PathValidator.ParsePathsFromText(PathsText),
+                TargetPaths = pathItems ?? PathValidator.ParseCleanupPathsFromText(PathsText),
                 Target = SelectedTarget,
                 DateMode = SelectedDateMode,
                 CutoffDate = CutoffDate,
@@ -801,6 +1023,7 @@ namespace FileAuditor.WPF.ViewModels
                 DryRun = DryRun,
                 RequireConfirmation = RequireConfirmation,
                 MoveToRecycleBin = MoveToRecycleBin,
+                OperationMode = OperationMode,
                 IncludeFileTypes = ParseList(IncludeFileTypes),
                 ExcludeFileTypes = ParseList(ExcludeFileTypes),
                 ExcludePatterns = ParseList(ExcludePatterns)

@@ -55,6 +55,12 @@
                 <!--OpenLogsFolder_Click-->
                 <MenuItem Header="Open _Logs Folder" Click="OpenLogsFolder_Click"/>
                 <Separator/>
+                <MenuItem Header="Clear _All" Click="ClearAll_Click" ToolTip="Reset both tabs to default settings">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🗑️" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
                 <MenuItem Header="E_xit" Click="Exit_Click"/>
             </MenuItem>
             <MenuItem Header="_Configuration">
@@ -496,7 +502,7 @@
                             <!-- Paths to Clean -->
                             <Expander Header="Paths to Clean" IsExpanded="True" Style="{StaticResource ExpanderStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="Enter paths (one per line):" Margin="0,0,0,5"/>
+                                    <TextBlock Text="{Binding PathsHintText}" Margin="0,0,0,5"/>
                                     <TextBox Text="{Binding PathsText, UpdateSourceTrigger=PropertyChanged}"
                  Height="120"
                  AcceptsReturn="True"
@@ -580,6 +586,10 @@
                                             <TextBlock Text="Cutoff Date:" VerticalAlignment="Center" Width="80"/>
                                             <DatePicker SelectedDate="{Binding CutoffDate}"
                    Width="150"/>
+                                            <Button Content="📅 Today"
+                    Command="{Binding SetCutoffToNowCommand}"
+                    Padding="5,3" Margin="6,0,0,0" FontSize="11"
+                    ToolTip="Set cutoff date and time to right now"/>
                                         </StackPanel>
 
                                         <StackPanel Orientation="Horizontal" Margin="0,5">
@@ -622,6 +632,10 @@
                                             <TextBlock Text="Date:" VerticalAlignment="Center" Width="80"/>
                                             <DatePicker SelectedDate="{Binding StartDate}"
                            Width="150"/>
+                                            <Button Content="📅 Today"
+                    Command="{Binding SetStartToNowCommand}"
+                    Padding="5,3" Margin="6,0,0,0" FontSize="11"
+                    ToolTip="Set date and time to right now"/>
                                         </StackPanel>
 
                                         <!-- Time option for exact date -->
@@ -658,12 +672,20 @@
                                             <TextBlock Text="Past Date:" VerticalAlignment="Center" Width="80"/>
                                             <DatePicker SelectedDate="{Binding StartDate}"
                            Width="150"/>
+                                            <Button Content="📅 Today"
+                    Command="{Binding SetStartToNowCommand}"
+                    Padding="5,3" Margin="6,0,0,0" FontSize="11"
+                    ToolTip="Set start date and time to right now"/>
                                         </StackPanel>
 
                                         <StackPanel Orientation="Horizontal" Margin="0,5">
                                             <TextBlock Text="Recent Date:" VerticalAlignment="Center" Width="80"/>
                                             <DatePicker SelectedDate="{Binding EndDate}"
                            Width="150"/>
+                                            <Button Content="📅 Today"
+                    Command="{Binding SetEndToNowCommand}"
+                    Padding="5,3" Margin="6,0,0,0" FontSize="11"
+                    ToolTip="Set end date and time to right now"/>
                                         </StackPanel>
 
                                         <!-- Time options for date range -->
@@ -761,6 +783,12 @@
                             <!-- Safety Options -->
                             <Expander Header="Safety Options" IsExpanded="True" Style="{StaticResource ExpanderStyle}">
                                 <StackPanel>
+                                    <!-- Operation Mode -->
+                                    <TextBlock Text="Operation Mode:" Margin="0,0,0,3"/>
+                                    <ComboBox ItemsSource="{Binding CleanupViewModel.OperationModes, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              SelectedItem="{Binding CleanupViewModel.OperationMode, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              Margin="0,0,0,8"/>
+
                                     <CheckBox Content="Dry Run (preview only)"
                                   IsChecked="{Binding CleanupViewModel.DryRun, RelativeSource={RelativeSource AncestorType=Window}}"
                                   Margin="0,5"
@@ -771,8 +799,10 @@
                                   IsChecked="{Binding CleanupViewModel.RequireConfirmation, RelativeSource={RelativeSource AncestorType=Window}}"
                                   Margin="0,5"/>
 
+                                    <!-- Move to Recycle Bin: only shown in Delete mode -->
                                     <CheckBox Content="Move to Recycle Bin (vs permanent delete)"
                                   IsChecked="{Binding CleanupViewModel.MoveToRecycleBin, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  Visibility="{Binding CleanupViewModel.IsDeleteMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisConverter}}"
                                   Margin="0,5"/>
                                 </StackPanel>
                             </Expander>
@@ -815,7 +845,7 @@
                             FontWeight="Bold"
                             Padding="20,10"
                             MinWidth="120"/>
-                                <Button Content="Execute Cleanup"
+                                <Button Content="{Binding CleanupViewModel.ExecuteButtonLabel, RelativeSource={RelativeSource AncestorType=Window}}"
                             Command="{Binding CleanupViewModel.ExecuteCleanupCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                             Style="{StaticResource ButtonStyle}"
                             IsEnabled="{Binding CleanupViewModel.IsDeleting, Converter={StaticResource BoolToVisConverter}, ConverterParameter=invert, RelativeSource={RelativeSource AncestorType=Window}}"

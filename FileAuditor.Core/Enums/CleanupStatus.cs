@@ -5,7 +5,9 @@ namespace FileAuditor.Core.Enums
         Pending,
         Scanning,
         ReadyToDelete,
+        ReadyToMove,
         Deleting,
+        Moving,
         Completed,
         Failed,
         Cancelled

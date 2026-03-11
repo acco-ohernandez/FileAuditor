@@ -36,8 +36,10 @@ FileAuditor.sln
 - **No UI logic in Core**: `FileAuditor.Core` has no reference to WPF or any UI framework. Keep it that way.
 - **Cancellation**: All long-running operations accept a `CancellationToken`. `MainViewModel` manages one `CancellationTokenSource` for the scan. `CleanupViewModel` manages two separate sources — `_analyzeCancellationTokenSource` and `_executeCancellationTokenSource` — so Analyze and ExecuteCleanup never share a token. The Cancel command cancels both.
 - **Thread safety in Core**: `ScanResult` counters (`TotalFiles`, `TotalFolders`, `TotalSizeBytes`) are backed by `Interlocked` operations. `ScanResult.Errors` uses `ConcurrentBag<ScanError>`. `FileTypeBreakdown` uses `ConcurrentDictionary`. Use the `IncrementFiles()`, `IncrementFolders()`, `AddBytes()`, and `AddError()` helpers — do not assign to the counter properties directly from concurrent code.
-- **MaxDepth default**: Both `MainViewModel` and `CleanupViewModel` default `MaxDepth` to `1` (one level deep). Users opt into deeper scans explicitly. `ScanConfiguration.MaxDepth` defaults to `null` (unlimited) for CLI/programmatic use.
+- **MaxDepth semantics**: Both `MainViewModel` and `CleanupViewModel` default `MaxDepth` to `1`. With the corrected greater-than guard (`currentDepth > config.MaxDepth.Value`), `MaxDepth=0` scans only the root itself (no subdirectories), `MaxDepth=1` scans the root plus one level of subdirectories (the default), and `null` means unlimited. `ScanConfiguration.MaxDepth` defaults to `null` for CLI/programmatic use.
 - **12-hour time fields in `CleanupViewModel`**: Cutoff, Start, and End times are each represented by three `string` observable properties (`*Hour`, `*Minute`, `*AmPm`) rather than a single `int`. `TryParse12HourTime()` converts them to a 24-hour `TimeSpan`; `To12Hour()` converts back when loading a saved config. All three `TimeSpan` fields (`CutoffTime`, `StartTime`, `EndTime`) are recomputed at the top of `CreateConfiguration()` to guarantee the correct value even if a ComboBox change notification fires after the other fields have already propagated.
+- **Date defaults in `CleanupViewModel`**: `CutoffDate`, `StartDate`, and `EndDate` all default to `DateTime.Now` (not a fixed offset). All six time string fields (cutoff/start/end hour, minute, AM/PM) are initialized to the current wall-clock time in the constructor via `SetCurrentTimeDefaults()`. The same helper is called by `ClearAll()` to restore current time after a reset.
+- **File type filter normalisation**: Both `FileScanner` and `CleanupService` use a local `ExtMatches`/`ExtensionMatches` helper that normalises each list entry to lowercase with a leading dot before comparing, so user input like `TXT`, `.txt`, or `.TXT` all match correctly. `MainViewModel.ParseFileTypes()` also lowercases and adds a leading dot at parse time so entries stored in `ScanConfiguration.IncludeFileTypes`/`ExcludeFileTypes` are pre-normalised. `CleanupViewModel.ParseList()` is NOT lowercased — it is also used for regex `ExcludePatterns` which must preserve case. Normalisation happens only at the comparison site in `ShouldCleanupItem`.
 
 ---
 
@@ -87,6 +89,25 @@ Failed
 Cancelled
 ```
 
+### `CleanupOperationMode`
+```csharp
+Delete        // Delete items (to Recycle Bin or permanently)
+MoveToFolder  // Move items to a per-path destination folder
+```
+
+### `CleanupStatus`
+```csharp
+Pending
+Scanning
+ReadyToDelete   // After Analyze in Delete mode
+ReadyToMove     // After Analyze in MoveToFolder mode
+Deleting
+Moving
+Completed
+Failed
+Cancelled
+```
+
 ---
 
 ## XAML / WPF Patterns
@@ -127,7 +148,7 @@ Cancelled
 
 ```
 FileAuditor.CLI scan    --config <path> [--output <path>] [--verbose]
-FileAuditor.CLI cleanup --config <path> [--dry-run | --execute] [--verbose]
+FileAuditor.CLI cleanup --config <path> [--dry-run | --execute] [--verbose] [--move <dest>]
 FileAuditor.CLI help    [scan | cleanup]
 FileAuditor.CLI version
 ```
@@ -135,6 +156,31 @@ FileAuditor.CLI version
 Exit codes: `0` = success, `1` = error.
 
 Configs saved from the WPF app are valid CLI configs (same JSON schema for both `ScanConfiguration` and `CleanupConfiguration`).
+
+### `--move <dest>` flag
+Switches the cleanup command to MoveToFolder mode and stamps `<dest>` as the `DestinationPath` on **every** `PathItem` in the config. Useful when all paths should be moved to the same destination. For per-path destinations, set `DestinationPath` on each `PathItem` in the JSON config instead.
+
+---
+
+## Cleanup Paths — Two-Column Format
+
+The **Paths to Clean** text area in the Cleanup tab (and in JSON configs) supports two formats:
+
+| Format | When to use |
+|---|---|
+| `C:\Source` | Delete mode, or Move mode with a global `--move` destination via CLI |
+| `C:\Source,D:\Destination` | MoveToFolder mode — per-path destination |
+
+**Rules:**
+- Split is performed on the **first comma only**, so paths containing commas are handled correctly.
+- Destination existence is not validated at entry time — it is created automatically (`Directory.CreateDirectory`) at execution time.
+- In MoveToFolder mode, `Analyze` enforces that every valid source path has a non-empty destination column.
+- Duplicate source paths are deduplicated (first occurrence wins).
+- The hint label above the text area changes dynamically based on the selected Operation Mode.
+
+**`PathValidator.ParseCleanupPathsFromText`** is the correct parser for cleanup paths (supports the two-column format). **`PathValidator.ParsePathsFromText`** is the legacy single-column parser used by the File Counter tab — do not use it for cleanup paths.
+
+**`CleanupResult.DestinationPath`** carries the per-path destination from Analyze through to Execute. It is stamped by the ViewModel after `AnalyzeMultiplePathsAsync` returns, using the `DestinationPath` from each matching `PathItem`.
 
 ---
 
@@ -159,6 +205,15 @@ Configs saved from the WPF app are valid CLI configs (same JSON schema for both 
 2. Implement it in the same folder (or in WPF if it has UI dependencies)
 3. Register it in `App.xaml.cs` with the DI container
 4. Inject it into the relevant ViewModel(s) via constructor
+
+### Adding a new date/time field to the Cleanup tab
+1. Add backing `[ObservableProperty]` string fields for `*Hour`, `*Minute`, `*AmPm` in `CleanupViewModel`
+2. Add `partial void On*Changed` callbacks that call a `Rebuild*Time()` helper
+3. Add the `Rebuild*Time()` helper (calls `TryParse12HourTime` → assigns `TimeSpan` property)
+4. Initialize the new fields in `SetCurrentTimeDefaults()` so they start at current time
+5. Reset them in `ClearAll()` via `SetCurrentTimeDefaults()`
+6. Add corresponding XAML controls in `MainWindow.xaml` with a "📅 Today" button bound to a `Set*ToNow` command
+7. Update `HelpWindow.xaml` to document the new fields
 
 ---
 
@@ -188,3 +243,13 @@ Configs saved from the WPF app are valid CLI configs (same JSON schema for both 
 - Do not call `GetScanHistoryAsync` with both a `path` filter and a `limit` expecting `limit` total records — the limit is applied after the path filter, so `limit` controls matching records, not total records read.
 - Do not read `CutoffTime`, `StartTime`, or `EndTime` directly in `CreateConfiguration()` without first calling `TryParse12HourTime()` to recompute them — the TimeSpan properties may lag behind the string fields if the AM/PM ComboBox fires its change notification out of order.
 - Do not display `Last Modified` timestamps in the Cleanup results DataGrid using `HH:mm:ss` (24-hour) — use `hh:mm:ss tt` (12-hour AM/PM) to be consistent with the time entry controls. CSV exports may retain ISO 24-hour format for data portability.
+- Do not use `PathValidator.ParsePathsFromText` for cleanup paths — use `PathValidator.ParseCleanupPathsFromText` which supports the two-column `source,destination` format. Using the wrong parser loses destination path data.
+- Do not set `CleanupConfiguration.MoveDestinationPath` — this property no longer exists. Destinations are per-path on `PathItem.DestinationPath` and carried through `CleanupResult.DestinationPath` at runtime.
+- Do not call `CleanupService.MoveItems` without first stamping `CleanupResult.DestinationPath` — the service returns an error (not an exception) and skips all items if the destination is null or empty.
+- Do not use `>=` in the MaxDepth guard (`currentDepth >= config.MaxDepth.Value`) — the correct check is `>` so that MaxDepth=1 scans the root plus one level of subdirectories. The `>=` form was a bug that caused files at depth 1 to never be found.
+- Do not use `List<string>.Contains(extension)` for file type comparisons — use the `ExtensionMatches` / `ExtMatches` local helper that normalises both the list entry and the extension to lowercase with a leading dot. Raw `Contains` silently misses entries like `"TXT"`, `"txt"`, or `".TXT"`.
+- Do not lowercase entries in `CleanupViewModel.ParseList()` — that method is also used for `ExcludePatterns` (regex), which must preserve case. Normalisation belongs at the comparison site (`ShouldCleanupItem` in `CleanupService`).
+- Do not call `ClearAll()` on either ViewModel while an operation is in progress — both guard against this and show a warning. The UI's "Clear All" handler in `MainWindow.xaml.cs` delegates to both VMs and relies on their guards.
+- Do not initialise `CleanupViewModel` date fields to fixed offsets (e.g. `DateTime.Now.AddDays(-30)`) — all date fields now default to `DateTime.Now`, and time fields are set by `SetCurrentTimeDefaults()` which is called in the constructor.
+- Do not call `[RelayCommand]`-decorated ViewModel methods directly from code-behind (e.g. `MainViewModel.ClearAll()`) — the source generator keeps the backing method `private`. Always call the generated `*Command` property instead: `MainViewModel.ClearAllCommand.Execute(null)`.
+- Do not use `CsvHelper` with `HasHeaderRecord = true` for importing cleanup paths — CsvHelper silently consumes the first data row as column headers when no header row is present. Use `ExportService.ImportPathsFromCsvAsync` which reads lines directly, detects headers via Windows path prefix (`X:` or `\\`), and handles the two-column `source,destination` format correctly.

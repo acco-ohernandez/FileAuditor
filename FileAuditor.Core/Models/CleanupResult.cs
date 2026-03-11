@@ -13,11 +13,19 @@ namespace FileAuditor.Core.Models
         public CleanupStatus Status { get; set; } = CleanupStatus.Pending;
         public bool WasDryRun { get; set; }
 
+        /// <summary>
+        /// Destination root folder for this path when OperationMode is MoveToFolder.
+        /// Stamped by the ViewModel after Analyze completes, from PathItem.DestinationPath.
+        /// </summary>
+        public string? DestinationPath { get; set; }
+
         // Results
         public long FilesIdentified { get; set; }
         public long FilesDeleted { get; set; }
+        public long FilesMoved { get; set; }
         public long FoldersIdentified { get; set; }
         public long FoldersDeleted { get; set; }
+        public long FoldersMoved { get; set; }
         public long TotalSizeBytes { get; set; }
 
         // Details
@@ -53,5 +61,8 @@ namespace FileAuditor.Core.Models
         public long SizeBytes { get; set; }
         public bool WasDeleted { get; set; }
         public string? DeletionError { get; set; }
+        public bool WasMoved { get; set; }
+        public string? MovedToPath { get; set; }
+        public string? MoveError { get; set; }
     }
 }
