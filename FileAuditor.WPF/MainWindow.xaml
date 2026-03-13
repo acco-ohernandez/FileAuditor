@@ -1338,7 +1338,7 @@
                                         FontWeight="Bold"
                                         Padding="20,10"
                                         MinWidth="120"/>
-                                <Button Content="Execute Move"
+                                <Button Content="{Binding MoveViewModel.ExecuteButtonLabel, RelativeSource={RelativeSource AncestorType=Window}}"
                                         Command="{Binding MoveViewModel.ExecuteCleanupCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         Style="{StaticResource ButtonStyle}"
                                         IsEnabled="{Binding MoveViewModel.IsNotDeleting, RelativeSource={RelativeSource AncestorType=Window}}"
