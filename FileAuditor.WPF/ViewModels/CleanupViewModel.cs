@@ -23,6 +23,10 @@ namespace FileAuditor.WPF.ViewModels
         private readonly ICleanupService _cleanupService;
         private readonly ILogger<CleanupViewModel> _logger;
 
+        // The mode this VM instance is locked to (Delete or MoveToFolder).
+        // Set once at construction; LoadConfiguration() restores it after loading.
+        private readonly CleanupOperationMode _initialMode;
+
         // Separate CTS per operation so Analyze and ExecuteCleanup never share one.
         private CancellationTokenSource? _analyzeCancellationTokenSource;
         private CancellationTokenSource? _executeCancellationTokenSource;
@@ -52,7 +56,7 @@ namespace FileAuditor.WPF.ViewModels
         private bool _isRecursive = true;
 
         [ObservableProperty]
-        private int? _maxDepth = 1;
+        private string _maxDepthText = "1";
 
         [ObservableProperty]
         private bool _includeHiddenFiles = false;
@@ -73,16 +77,16 @@ namespace FileAuditor.WPF.ViewModels
         [NotifyPropertyChangedFor(nameof(PathsHintText))]
         private CleanupOperationMode _operationMode = CleanupOperationMode.Delete;
 
-        public bool IsDeleteMode => _operationMode == CleanupOperationMode.Delete;
-        public bool IsMoveMode => _operationMode == CleanupOperationMode.MoveToFolder;
-        public string ExecuteButtonLabel => _operationMode == CleanupOperationMode.MoveToFolder
+        public bool IsDeleteMode => OperationMode == CleanupOperationMode.Delete;
+        public bool IsMoveMode => OperationMode == CleanupOperationMode.MoveToFolder;
+        public string ExecuteButtonLabel => OperationMode == CleanupOperationMode.MoveToFolder
             ? "Execute Move" : "Execute Cleanup";
 
         /// <summary>
         /// Hint text shown above the Paths to Clean text box.
         /// Changes to explain the two-column format when in MoveToFolder mode.
         /// </summary>
-        public string PathsHintText => _operationMode == CleanupOperationMode.MoveToFolder
+        public string PathsHintText => OperationMode == CleanupOperationMode.MoveToFolder
             ? "Enter paths (source,destination per line — one pair per line):"
             : "Enter paths (one per line):";
 
@@ -96,10 +100,15 @@ namespace FileAuditor.WPF.ViewModels
         private string _excludePatterns = string.Empty;
 
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsNotAnalyzing))]
         private bool _isAnalyzing = false;
 
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsNotDeleting))]
         private bool _isDeleting = false;
+
+        public bool IsNotAnalyzing => !IsAnalyzing;
+        public bool IsNotDeleting  => !IsDeleting;
 
         [ObservableProperty]
         private string _statusMessage = "Ready";
@@ -124,7 +133,10 @@ namespace FileAuditor.WPF.ViewModels
         private ObservableCollection<CleanupConfiguration> _savedConfigurations = new();
 
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasSelectedConfiguration))]
         private CleanupConfiguration? _selectedConfiguration;
+
+        public bool HasSelectedConfiguration => SelectedConfiguration != null;
 
         // ── 12-hour time helpers ─────────────────────────────────────────────────
         // Cutoff time (OlderThan / NewerThan)
@@ -251,6 +263,29 @@ namespace FileAuditor.WPF.ViewModels
             CleanupOperationMode.MoveToFolder
         };
 
+        // ── Move tab: Single vs Batch input mode ─────────────────────────────────
+        public ObservableCollection<MoveInputMode> MoveInputModes { get; } = new()
+        {
+            MoveInputMode.Single,
+            MoveInputMode.Batch
+        };
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsSingleMoveMode))]
+        [NotifyPropertyChangedFor(nameof(IsBatchMoveMode))]
+        private MoveInputMode _moveInputMode = MoveInputMode.Single;
+
+        public bool IsSingleMoveMode => MoveInputMode == MoveInputMode.Single;
+        public bool IsBatchMoveMode  => MoveInputMode == MoveInputMode.Batch;
+
+        /// <summary>Single-move source folder/file path.</summary>
+        [ObservableProperty]
+        private string _singleSourcePath = string.Empty;
+
+        /// <summary>Single-move destination folder path.</summary>
+        [ObservableProperty]
+        private string _singleDestinationPath = string.Empty;
+
         // Add to constructor injection
         private readonly IScanHistoryService _historyService;
         private readonly IExportService _exportService;
@@ -259,12 +294,15 @@ namespace FileAuditor.WPF.ViewModels
             ICleanupService cleanupService,
             IScanHistoryService historyService,
             IExportService exportService,
-            ILogger<CleanupViewModel> logger)
+            ILogger<CleanupViewModel> logger,
+            CleanupOperationMode initialMode = CleanupOperationMode.Delete)
         {
             _cleanupService = cleanupService;
             _historyService = historyService;
             _exportService = exportService;
             _logger = logger;
+            _initialMode = initialMode;
+            _operationMode = initialMode;
 
             SetCurrentTimeDefaults();
             _ = LoadSavedConfigurations();
@@ -346,6 +384,9 @@ namespace FileAuditor.WPF.ViewModels
             }
 
             PathsText = string.Empty;
+            SingleSourcePath = string.Empty;
+            SingleDestinationPath = string.Empty;
+            MoveInputMode = MoveInputMode.Single;
             SelectedTarget = CleanupTarget.FilesOnly;
             SelectedDateMode = CleanupDateMode.AnyDate;
             CutoffDate = DateTime.Now;
@@ -353,12 +394,12 @@ namespace FileAuditor.WPF.ViewModels
             EndDate = DateTime.Now;
             IncludeTime = false;
             IsRecursive = true;
-            MaxDepth = 1;
+            MaxDepthText = "1";
             IncludeHiddenFiles = false;
             DryRun = true;
             RequireConfirmation = true;
             MoveToRecycleBin = true;
-            OperationMode = CleanupOperationMode.Delete;
+            OperationMode = _initialMode;
             IncludeFileTypes = string.Empty;
             ExcludeFileTypes = string.Empty;
             ExcludePatterns = string.Empty;
@@ -387,6 +428,34 @@ namespace FileAuditor.WPF.ViewModels
 
                 PathsText += dialog.SelectedPath;
             }
+        }
+
+        [RelayCommand]
+        private void BrowseSingleSource()
+        {
+            var dialog = new System.Windows.Forms.FolderBrowserDialog
+            {
+                Description = "Select the source folder to move from",
+                UseDescriptionForTitle = true,
+                ShowNewFolderButton = false
+            };
+
+            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                SingleSourcePath = dialog.SelectedPath;
+        }
+
+        [RelayCommand]
+        private void BrowseSingleDestination()
+        {
+            var dialog = new System.Windows.Forms.FolderBrowserDialog
+            {
+                Description = "Select the destination folder to move to",
+                UseDescriptionForTitle = true,
+                ShowNewFolderButton = true
+            };
+
+            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                SingleDestinationPath = dialog.SelectedPath;
         }
 
         [RelayCommand]
@@ -428,13 +497,6 @@ namespace FileAuditor.WPF.ViewModels
             if (IsAnalyzing || IsDeleting)
                 return;
 
-            if (string.IsNullOrWhiteSpace(PathsText))
-            {
-                MessageBox.Show("Please enter at least one path to analyze.", "No Paths",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
             try
             {
                 IsAnalyzing = true;
@@ -442,32 +504,73 @@ namespace FileAuditor.WPF.ViewModels
                 AnalysisResults.Clear();
                 _lastAnalysisConfig = null;
 
-                // Parse paths using the two-column cleanup parser so DestinationPath is populated.
-                var parsedPaths = PathValidator.ParseCleanupPathsFromText(PathsText);
+                List<PathItem> parsedPaths;
 
-                if (!parsedPaths.Any(p => p.IsValid))
+                // Single move mode: build one PathItem from the dedicated source/dest fields.
+                if (OperationMode == CleanupOperationMode.MoveToFolder && IsSingleMoveMode)
                 {
-                    MessageBox.Show("No valid paths found. Please check the entered paths.",
-                        "No Valid Paths", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
+                    if (string.IsNullOrWhiteSpace(SingleSourcePath))
+                    {
+                        MessageBox.Show("Please enter a source path.", "Source Required",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
 
-                // In MoveToFolder mode every valid path must have a destination.
-                if (OperationMode == CleanupOperationMode.MoveToFolder)
-                {
-                    var missingDest = parsedPaths
-                        .Where(p => p.IsValid && string.IsNullOrWhiteSpace(p.DestinationPath))
-                        .ToList();
+                    if (string.IsNullOrWhiteSpace(SingleDestinationPath))
+                    {
+                        MessageBox.Show("Please enter a destination path.", "Destination Required",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
 
-                    if (missingDest.Any())
+                    var pathItem = PathValidator.ValidatePath(SingleSourcePath);
+                    if (!pathItem.IsValid)
                     {
                         MessageBox.Show(
-                            "Move to Folder mode requires a destination for each path.\n\n" +
-                            "Use the format:  source,destination  (one pair per line).\n\n" +
-                            "Paths missing a destination:\n" +
-                            string.Join("\n", missingDest.Select(p => "  • " + p.Path)),
-                            "Destination Required", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            $"Source path is not accessible:\n{pathItem.ValidationError ?? SingleSourcePath}",
+                            "Invalid Source", MessageBoxButton.OK, MessageBoxImage.Warning);
                         return;
+                    }
+
+                    pathItem.DestinationPath = SingleDestinationPath;
+                    parsedPaths = new List<PathItem> { pathItem };
+                }
+                else
+                {
+                    // Batch mode (Delete or MoveToFolder): parse the two-column text area.
+                    if (string.IsNullOrWhiteSpace(PathsText))
+                    {
+                        MessageBox.Show("Please enter at least one path to analyze.", "No Paths",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
+                    parsedPaths = PathValidator.ParseCleanupPathsFromText(PathsText);
+
+                    if (!parsedPaths.Any(p => p.IsValid))
+                    {
+                        MessageBox.Show("No valid paths found. Please check the entered paths.",
+                            "No Valid Paths", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
+                    // In MoveToFolder batch mode every valid path must have a destination.
+                    if (OperationMode == CleanupOperationMode.MoveToFolder)
+                    {
+                        var missingDest = parsedPaths
+                            .Where(p => p.IsValid && string.IsNullOrWhiteSpace(p.DestinationPath))
+                            .ToList();
+
+                        if (missingDest.Any())
+                        {
+                            MessageBox.Show(
+                                "Move to Folder mode requires a destination for each path.\n\n" +
+                                "Use the format:  source,destination  (one pair per line).\n\n" +
+                                "Paths missing a destination:\n" +
+                                string.Join("\n", missingDest.Select(p => "  • " + p.Path)),
+                                "Destination Required", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            return;
+                        }
                     }
                 }
 
@@ -495,10 +598,48 @@ namespace FileAuditor.WPF.ViewModels
                     .Where(p => !string.IsNullOrWhiteSpace(p.DestinationPath))
                     .ToDictionary(p => p.Path, p => p.DestinationPath!, StringComparer.OrdinalIgnoreCase);
 
+                int totalExcluded = 0;
+
                 foreach (var result in results)
                 {
                     if (destLookup.TryGetValue(result.Path, out var dest))
                         result.DestinationPath = dest;
+
+                    // In MoveToFolder mode, exclude items that are already inside the
+                    // destination folder (e.g. when the destination is a subfolder of
+                    // the source). Items equal to or descending from the destination
+                    // path are removed so they are never moved into themselves.
+                    if (OperationMode == CleanupOperationMode.MoveToFolder
+                        && !string.IsNullOrEmpty(result.DestinationPath))
+                    {
+                        var destNorm = Path.GetFullPath(result.DestinationPath)
+                                           .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                                       + Path.DirectorySeparatorChar;
+
+                        var excluded = result.Items
+                            .Where(item =>
+                            {
+                                var itemNorm = Path.GetFullPath(item.Path)
+                                                   .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                                // Exclude items equal to the destination dir itself or nested inside it.
+                                return itemNorm.StartsWith(destNorm, StringComparison.OrdinalIgnoreCase)
+                                    || string.Equals(itemNorm,
+                                           destNorm.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                                           StringComparison.OrdinalIgnoreCase);
+                            })
+                            .ToList();
+
+                        foreach (var item in excluded)
+                        {
+                            result.Items.Remove(item);
+                            if (item.IsDirectory)
+                                result.FoldersIdentified--;
+                            else
+                                result.FilesIdentified--;
+                            result.TotalSizeBytes -= item.SizeBytes;
+                            totalExcluded++;
+                        }
+                    }
 
                     AnalysisResults.Add(result);
                 }
@@ -507,7 +648,11 @@ namespace FileAuditor.WPF.ViewModels
                 var totalFolders = results.Sum(r => r.FoldersIdentified);
                 var totalSize = results.Sum(r => r.TotalSizeBytes);
 
-                StatusMessage = $"Analysis complete: {totalFiles} files, {totalFolders} folders ({FormatSize(totalSize)}) identified";
+                var statusMsg = $"Analysis complete: {totalFiles} files, {totalFolders} folders ({FormatSize(totalSize)}) identified";
+                if (totalExcluded > 0)
+                    statusMsg += $" — {totalExcluded} item(s) excluded (already inside destination folder)";
+
+                StatusMessage = statusMsg;
 
                 _logger.LogInformation("Cleanup analysis complete. {Files} files, {Folders} folders identified",
                     totalFiles, totalFolders);
@@ -603,6 +748,14 @@ namespace FileAuditor.WPF.ViewModels
                         progress);
                 }
 
+                // CleanupItem is a plain POCO (no INotifyPropertyChanged).  Force the
+                // DataGrid to re-bind by clearing and re-adding every result so that
+                // the updated WasMoved / MovedToPath / WasDeleted columns are visible.
+                var resultsSnapshot = AnalysisResults.ToList();
+                AnalysisResults.Clear();
+                foreach (var r in resultsSnapshot)
+                    AnalysisResults.Add(r);
+
                 bool isMoveMode = OperationMode == CleanupOperationMode.MoveToFolder;
                 var processedFiles = isMoveMode
                     ? AnalysisResults.Sum(r => r.FilesMoved)
@@ -618,7 +771,7 @@ namespace FileAuditor.WPF.ViewModels
 
                 Directory.CreateDirectory(logsFolder);
 
-                var opLabel = isMoveMode ? "move" : "cleanup";
+                var opLabel = isMoveMode ? "move" : "delete";
                 var autoExportPath = Path.Combine(logsFolder,
                     $"{opLabel}_results_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
 
@@ -735,7 +888,7 @@ namespace FileAuditor.WPF.ViewModels
             {
                 Filter = "CSV Files (*.csv)|*.csv|JSON Files (*.json)|*.json",
                 DefaultExt = "csv",
-                FileName = $"CleanupAnalysis_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
+                FileName = $"{(OperationMode == CleanupOperationMode.MoveToFolder ? "MoveAnalysis" : "DeleteAnalysis")}_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
             };
 
             if (dialog.ShowDialog() == true)
@@ -800,10 +953,16 @@ namespace FileAuditor.WPF.ViewModels
 
             try
             {
+                // In single move mode, build the TargetPaths from the dedicated fields.
+                var targetPaths = (OperationMode == CleanupOperationMode.MoveToFolder && IsSingleMoveMode
+                    && !string.IsNullOrWhiteSpace(SingleSourcePath))
+                    ? new List<PathItem> { new PathItem(SingleSourcePath) { DestinationPath = SingleDestinationPath } }
+                    : PathValidator.ParseCleanupPathsFromText(PathsText);
+
                 var config = new CleanupConfiguration
                 {
                     Name = configName,
-                    TargetPaths = PathValidator.ParseCleanupPathsFromText(PathsText),
+                    TargetPaths = targetPaths,
                     Target = SelectedTarget,
                     DateMode = SelectedDateMode,
                     CutoffDate = CutoffDate,
@@ -814,7 +973,7 @@ namespace FileAuditor.WPF.ViewModels
                     StartTime = StartTime,
                     EndTime = EndTime,
                     IsRecursive = IsRecursive,
-                    MaxDepth = MaxDepth,
+                    MaxDepth = string.IsNullOrWhiteSpace(MaxDepthText) ? null : int.TryParse(MaxDepthText, out var md1) ? md1 : (int?)null,
                     IncludeHiddenFiles = IncludeHiddenFiles,
                     DryRun = DryRun,
                     RequireConfirmation = RequireConfirmation,
@@ -855,7 +1014,14 @@ namespace FileAuditor.WPF.ViewModels
         {
             var errors = new List<string>();
 
-            if (string.IsNullOrWhiteSpace(PathsText))
+            if (OperationMode == CleanupOperationMode.MoveToFolder && IsSingleMoveMode)
+            {
+                if (string.IsNullOrWhiteSpace(SingleSourcePath))
+                    errors.Add("Source path is required");
+                if (string.IsNullOrWhiteSpace(SingleDestinationPath))
+                    errors.Add("Destination path is required");
+            }
+            else if (string.IsNullOrWhiteSpace(PathsText))
             {
                 errors.Add("At least one path must be specified");
             }
@@ -956,15 +1122,18 @@ namespace FileAuditor.WPF.ViewModels
             }
 
             IsRecursive = SelectedConfiguration.IsRecursive;
-            MaxDepth = SelectedConfiguration.MaxDepth;
+            MaxDepthText = SelectedConfiguration.MaxDepth?.ToString() ?? string.Empty;
             IncludeHiddenFiles = SelectedConfiguration.IncludeHiddenFiles;
             DryRun = SelectedConfiguration.DryRun;
             RequireConfirmation = SelectedConfiguration.RequireConfirmation;
             MoveToRecycleBin = SelectedConfiguration.MoveToRecycleBin;
-            OperationMode = SelectedConfiguration.OperationMode;
+            // Always restore the tab's locked mode regardless of what was saved in the config.
+            OperationMode = _initialMode;
             IncludeFileTypes = string.Join(", ", SelectedConfiguration.IncludeFileTypes);
             ExcludeFileTypes = string.Join(", ", SelectedConfiguration.ExcludeFileTypes);
             ExcludePatterns = string.Join("\n", SelectedConfiguration.ExcludePatterns);
+            // Configs always use batch format (TargetPaths list), so switch to Batch input mode.
+            MoveInputMode = MoveInputMode.Batch;
 
             StatusMessage = $"Loaded configuration '{SelectedConfiguration.Name}'";
         }
@@ -1018,7 +1187,7 @@ namespace FileAuditor.WPF.ViewModels
                 StartTime = StartTime,
                 EndTime = EndTime,
                 IsRecursive = IsRecursive,
-                MaxDepth = MaxDepth,
+                MaxDepth = string.IsNullOrWhiteSpace(MaxDepthText) ? null : int.TryParse(MaxDepthText, out var md2) ? md2 : (int?)null,
                 IncludeHiddenFiles = IncludeHiddenFiles,
                 DryRun = DryRun,
                 RequireConfirmation = RequireConfirmation,

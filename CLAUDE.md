@@ -14,11 +14,12 @@ FileAuditor.sln
 │   ├── Helpers/               # PathValidator, FileSystemHelper (Win32 P/Invoke)
 │   └── Services/              # FileScanner, BoxDriveHandler, ScanHistoryService, IExportService, ICleanupService
 ├── FileAuditor.WPF/           # WPF desktop app (net8.0-windows)
-│   ├── ViewModels/            # MainViewModel (File Counter tab), CleanupViewModel (Cleanup tab)
-│   ├── Views/                 # HelpWindow.xaml (5-tab in-app help)
+│   ├── ViewModels/            # MainViewModel (File Counter tab), CleanupViewModel (Delete + Move tabs)
+│   │   └── MoveInputMode.cs   # WPF-only enum: Single | Batch (used by CleanupViewModel in MoveToFolder mode)
+│   ├── Views/                 # HelpWindow.xaml (7-tab in-app help)
 │   ├── Converters/            # Value converters for XAML bindings
 │   ├── App.xaml.cs            # DI container setup + Serilog configuration
-│   └── MainWindow.xaml        # Two-tab main window (File Counter + Cleanup)
+│   └── MainWindow.xaml        # Three-tab main window (File Counter + Delete + Move to Folder)
 └── FileAuditor.CLI/           # Console app (net8.0)
     ├── Program.cs             # scan and cleanup commands
     ├── sample-config.json     # Example scan configuration
@@ -34,6 +35,8 @@ FileAuditor.sln
 - **Logging**: Serilog is used everywhere via the `Microsoft.Extensions.Logging` abstraction (`ILogger<T>`). Never use `Console.WriteLine` or `Debug.WriteLine` for logging in non-test code.
 - **Async throughout**: All scan and cleanup operations are async. The Core services use `Parallel.ForEachAsync` for parallel path processing. Do not block on async calls (no `.Result` or `.Wait()`).
 - **No UI logic in Core**: `FileAuditor.Core` has no reference to WPF or any UI framework. Keep it that way.
+- **Two separate CleanupViewModel instances**: `MainWindow` holds two independent `CleanupViewModel` instances — `DeleteViewModel` (locked to `CleanupOperationMode.Delete`) and `MoveViewModel` (locked to `CleanupOperationMode.MoveToFolder`). Both are constructed manually in `MainWindow`'s constructor using `IServiceProvider` (not registered in the DI container) so that the `initialMode` constructor parameter can be passed. Each has its own state, cancellation tokens, and configuration. The Delete tab sets its `DataContext` to `DeleteViewModel`; the Move to Folder tab sets its `DataContext` to `MoveViewModel`.
+- **`MoveInputMode` enum**: Defined in `FileAuditor.WPF/ViewModels/MoveInputMode.cs` (WPF-only, not in Core). Values: `Single` (one source + one destination entered directly in the UI) and `Batch` (CSV file import of multiple source,destination pairs). Used only in `CleanupViewModel` when `_initialMode == MoveToFolder`.
 - **Cancellation**: All long-running operations accept a `CancellationToken`. `MainViewModel` manages one `CancellationTokenSource` for the scan. `CleanupViewModel` manages two separate sources — `_analyzeCancellationTokenSource` and `_executeCancellationTokenSource` — so Analyze and ExecuteCleanup never share a token. The Cancel command cancels both.
 - **Thread safety in Core**: `ScanResult` counters (`TotalFiles`, `TotalFolders`, `TotalSizeBytes`) are backed by `Interlocked` operations. `ScanResult.Errors` uses `ConcurrentBag<ScanError>`. `FileTypeBreakdown` uses `ConcurrentDictionary`. Use the `IncrementFiles()`, `IncrementFolders()`, `AddBytes()`, and `AddError()` helpers — do not assign to the counter properties directly from concurrent code.
 - **MaxDepth semantics**: Both `MainViewModel` and `CleanupViewModel` default `MaxDepth` to `1`. With the corrected greater-than guard (`currentDepth > config.MaxDepth.Value`), `MaxDepth=0` scans only the root itself (no subdirectories), `MaxDepth=1` scans the root plus one level of subdirectories (the default), and `null` means unlimited. `ScanConfiguration.MaxDepth` defaults to `null` for CLI/programmatic use.
@@ -95,6 +98,12 @@ Delete        // Delete items (to Recycle Bin or permanently)
 MoveToFolder  // Move items to a per-path destination folder
 ```
 
+### `MoveInputMode` (WPF-only, in `FileAuditor.WPF/ViewModels/`)
+```csharp
+Single   // User enters one source path + one destination path in the UI
+Batch    // User imports a CSV file with multiple source,destination pairs
+```
+
 ### `CleanupStatus`
 ```csharp
 Pending
@@ -117,6 +126,8 @@ Cancelled
 - **`BytesToSizeConverter`**: Formats byte counts as human-readable strings (KB, MB, GB).
 - **`ScanStatusToColorConverter`**: Maps `ScanStatus` enum values to brush colors for the results DataGrid.
 - Expanders in the main window are used for collapsible configuration panels. Keep configuration sections inside Expanders to manage vertical space.
+- **Tab DataContext binding**: The Delete and Move to Folder `<TabItem>` elements each set their own `DataContext` via `<TabItem.DataContext><Binding Path="DeleteViewModel" RelativeSource="{RelativeSource AncestorType=Window}"/></TabItem.DataContext>`. Controls inside these tabs use direct `{Binding Prop}` (inheriting the TabItem DataContext). Controls that need to reference the _other_ VM (rare) must use `RelativeSource AncestorType=Window` explicitly.
+- **Help tab indices** (HelpWindow.xaml): 0=Getting Started, 1=File Counter, 2=Delete Help, 3=Move to Folder, 4=CLI Usage, 5=Box Drive, 6=FAQ. Code-behind click handlers (`ScanHelp_Click` → 1, `DeleteHelp_Click` → 2, `MoveHelp_Click` → 3, `CliHelp_Click` → 4) must match these indices.
 
 ---
 
@@ -253,3 +264,6 @@ The **Paths to Clean** text area in the Cleanup tab (and in JSON configs) suppor
 - Do not initialise `CleanupViewModel` date fields to fixed offsets (e.g. `DateTime.Now.AddDays(-30)`) — all date fields now default to `DateTime.Now`, and time fields are set by `SetCurrentTimeDefaults()` which is called in the constructor.
 - Do not call `[RelayCommand]`-decorated ViewModel methods directly from code-behind (e.g. `MainViewModel.ClearAll()`) — the source generator keeps the backing method `private`. Always call the generated `*Command` property instead: `MainViewModel.ClearAllCommand.Execute(null)`.
 - Do not use `CsvHelper` with `HasHeaderRecord = true` for importing cleanup paths — CsvHelper silently consumes the first data row as column headers when no header row is present. Use `ExportService.ImportPathsFromCsvAsync` which reads lines directly, detects headers via Windows path prefix (`X:` or `\\`), and handles the two-column `source,destination` format correctly.
+- Do not register `CleanupViewModel` in the DI container (`App.xaml.cs`) — it is constructed manually in `MainWindow`'s constructor (two instances: `DeleteViewModel` and `MoveViewModel`) so the `initialMode` parameter can be passed per-instance. Registering it in DI would create a third, unused singleton.
+- Do not add an Operation Mode ComboBox to the Delete tab or Move to Folder tab — each tab's `CleanupViewModel` is locked to its mode via `_initialMode` set in the constructor. The mode cannot be changed at runtime from the UI.
+- Do not share a `CleanupViewModel` instance between the Delete and Move to Folder tabs — they are intentionally separate instances with independent state (separate cancellation tokens, separate scan results, separate configurations).

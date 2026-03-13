@@ -1,8 +1,16 @@
 using System.IO;
+using System.Linq;
 using System.Windows;
+using System.Windows.Input;
 
+using FileAuditor.Core.Enums;
+using FileAuditor.Core.Services;
 using FileAuditor.WPF.ViewModels;
 using FileAuditor.WPF.Views;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
 // Aliases to avoid ambiguity with System.Windows.Forms
 using MessageBox = System.Windows.MessageBox;
 using MessageBoxButton = System.Windows.MessageBoxButton;
@@ -13,14 +21,34 @@ namespace FileAuditor.WPF
     public partial class MainWindow : Window
     {
         public MainViewModel MainViewModel { get; }
-        public CleanupViewModel CleanupViewModel { get; }
+        /// <summary>ViewModel for the Delete tab (locked to Delete mode).</summary>
+        public CleanupViewModel DeleteViewModel { get; }
+        /// <summary>ViewModel for the Move to Folder tab (locked to MoveToFolder mode).</summary>
+        public CleanupViewModel MoveViewModel { get; }
 
-        public MainWindow(MainViewModel mainViewModel, CleanupViewModel cleanupViewModel)
+        public MainWindow(MainViewModel mainViewModel, IServiceProvider serviceProvider)
         {
             InitializeComponent();
 
             MainViewModel = mainViewModel;
-            CleanupViewModel = cleanupViewModel;
+
+            // Construct two independent CleanupViewModel instances, each locked to a mode.
+            // We resolve their shared service dependencies from the container and pass the
+            // initialMode parameter manually — the DI container cannot differentiate two
+            // CleanupViewModel parameters of the same type.
+            DeleteViewModel = new CleanupViewModel(
+                serviceProvider.GetRequiredService<ICleanupService>(),
+                serviceProvider.GetRequiredService<IScanHistoryService>(),
+                serviceProvider.GetRequiredService<IExportService>(),
+                serviceProvider.GetRequiredService<ILogger<CleanupViewModel>>(),
+                CleanupOperationMode.Delete);
+
+            MoveViewModel = new CleanupViewModel(
+                serviceProvider.GetRequiredService<ICleanupService>(),
+                serviceProvider.GetRequiredService<IScanHistoryService>(),
+                serviceProvider.GetRequiredService<IExportService>(),
+                serviceProvider.GetRequiredService<ILogger<CleanupViewModel>>(),
+                CleanupOperationMode.MoveToFolder);
 
             DataContext = MainViewModel;
         }
@@ -41,7 +69,6 @@ namespace FileAuditor.WPF
         {
             var helpWindow = new HelpWindow();
             helpWindow.Owner = this;
-            // Select the File Counter tab (index 1)
             helpWindow.Loaded += (s, args) =>
             {
                 var tabControl = helpWindow.FindName("HelpTabControl") as System.Windows.Controls.TabControl;
@@ -51,11 +78,10 @@ namespace FileAuditor.WPF
             helpWindow.ShowDialog();
         }
 
-        private void CleanupHelp_Click(object sender, RoutedEventArgs e)
+        private void DeleteHelp_Click(object sender, RoutedEventArgs e)
         {
             var helpWindow = new HelpWindow();
             helpWindow.Owner = this;
-            // Select the Cleanup Help tab (index 2)
             helpWindow.Loaded += (s, args) =>
             {
                 var tabControl = helpWindow.FindName("HelpTabControl") as System.Windows.Controls.TabControl;
@@ -65,16 +91,28 @@ namespace FileAuditor.WPF
             helpWindow.ShowDialog();
         }
 
-        private void CliHelp_Click(object sender, RoutedEventArgs e)
+        private void MoveHelp_Click(object sender, RoutedEventArgs e)
         {
             var helpWindow = new HelpWindow();
             helpWindow.Owner = this;
-            // Select the CLI Usage tab (index 3)
             helpWindow.Loaded += (s, args) =>
             {
                 var tabControl = helpWindow.FindName("HelpTabControl") as System.Windows.Controls.TabControl;
                 if (tabControl != null)
                     tabControl.SelectedIndex = 3;
+            };
+            helpWindow.ShowDialog();
+        }
+
+        private void CliHelp_Click(object sender, RoutedEventArgs e)
+        {
+            var helpWindow = new HelpWindow();
+            helpWindow.Owner = this;
+            helpWindow.Loaded += (s, args) =>
+            {
+                var tabControl = helpWindow.FindName("HelpTabControl") as System.Windows.Controls.TabControl;
+                if (tabControl != null)
+                    tabControl.SelectedIndex = 4;
             };
             helpWindow.ShowDialog();
         }
@@ -87,10 +125,7 @@ namespace FileAuditor.WPF
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "FileAuditor", "Logs");
 
-                // Create the folder if it doesn't exist
                 Directory.CreateDirectory(logsFolder);
-
-                // Open in Windows Explorer
                 System.Diagnostics.Process.Start("explorer.exe", logsFolder);
             }
             catch (Exception ex)
@@ -102,10 +137,11 @@ namespace FileAuditor.WPF
                     MessageBoxImage.Error);
             }
         }
+
         private void ClearAll_Click(object sender, RoutedEventArgs e)
         {
             var result = MessageBox.Show(
-                "This will reset both the File Counter and Cleanup tabs to their default settings.\n\n" +
+                "This will reset all tabs (File Counter, Delete, Move to Folder) to their default settings.\n\n" +
                 "All unsaved paths and results will be lost. Continue?",
                 "Clear All",
                 MessageBoxButton.YesNo,
@@ -114,7 +150,33 @@ namespace FileAuditor.WPF
             if (result == System.Windows.MessageBoxResult.Yes)
             {
                 MainViewModel.ClearAllCommand.Execute(null);
-                CleanupViewModel.ClearAllCommand.Execute(null);
+                DeleteViewModel.ClearAllCommand.Execute(null);
+                MoveViewModel.ClearAllCommand.Execute(null);
+            }
+        }
+
+        /// <summary>
+        /// Shared handler for Max Depth TextBoxes — allows only digit characters.
+        /// </summary>
+        private void MaxDepth_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            e.Handled = !e.Text.All(char.IsDigit);
+        }
+
+        /// <summary>
+        /// Shared paste handler for Max Depth TextBoxes — blocks non-integer paste content.
+        /// </summary>
+        private void MaxDepth_Pasting(object sender, DataObjectPastingEventArgs e)
+        {
+            if (e.DataObject.GetDataPresent(typeof(string)))
+            {
+                var text = (string)e.DataObject.GetData(typeof(string))!;
+                if (!text.All(char.IsDigit))
+                    e.CancelCommand();
+            }
+            else
+            {
+                e.CancelCommand();
             }
         }
 
@@ -134,9 +196,9 @@ namespace FileAuditor.WPF
                 "• Export to CSV/JSON\n" +
                 "• Scan history and comparison\n" +
                 "• Safe cleanup with dry-run mode\n" +
-                "• Move to Folder (per-path destination)\n" +
+                "• Move to Folder: single-move or batch CSV mode\n" +
                 "• Date quick-set (Today / Now buttons)\n" +
-                "• Clear All to reset the form\n" +
+                "• Clear All to reset all tabs\n" +
                 "• Command-line interface for automation\n\n" +
                 "Built with .NET 8 and WPF\n" +
                 "© 2026",

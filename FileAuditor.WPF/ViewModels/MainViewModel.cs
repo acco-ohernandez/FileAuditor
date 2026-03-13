@@ -39,13 +39,16 @@ namespace FileAuditor.WPF.ViewModels
         private ScanResult? _selectedScanResult;
 
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsNotScanning))]
         private bool _isScanning = false;
+
+        public bool IsNotScanning => !IsScanning;
 
         [ObservableProperty]
         private bool _isRecursive = true;
 
         [ObservableProperty]
-        private int? _maxDepth = 1;
+        private string _maxDepthText = "1";
 
         [ObservableProperty]
         private int _parallelThreadCount = 4;
@@ -181,7 +184,7 @@ namespace FileAuditor.WPF.ViewModels
                     Paths = pathItems,
                     CountMode = SelectedCountMode,
                     IsRecursive = IsRecursive,
-                    MaxDepth = MaxDepth,
+                    MaxDepth = string.IsNullOrWhiteSpace(MaxDepthText) ? null : int.TryParse(MaxDepthText, out var md) ? md : (int?)null,
                     ParallelThreadCount = ParallelThreadCount,
                     IncludeHiddenFiles = IncludeHiddenFiles,
                     BoxDriveRefreshEnabled = BoxDriveRefreshEnabled,
@@ -278,7 +281,7 @@ namespace FileAuditor.WPF.ViewModels
             SelectedScanResult = null;
             SelectedCountMode = CountMode.Both;
             IsRecursive = true;
-            MaxDepth = 1;
+            MaxDepthText = "1";
             ParallelThreadCount = 4;
             IncludeHiddenFiles = false;
             BoxDriveRefreshEnabled = true;
@@ -425,7 +428,7 @@ namespace FileAuditor.WPF.ViewModels
                     Paths = pathItems,  // Add the parsed paths
                     CountMode = SelectedCountMode,
                     IsRecursive = IsRecursive,
-                    MaxDepth = MaxDepth,
+                    MaxDepth = string.IsNullOrWhiteSpace(MaxDepthText) ? null : int.TryParse(MaxDepthText, out var md) ? md : (int?)null,
                     ParallelThreadCount = ParallelThreadCount,
                     IncludeHiddenFiles = IncludeHiddenFiles,
                     BoxDriveRefreshEnabled = BoxDriveRefreshEnabled,
@@ -462,7 +465,7 @@ namespace FileAuditor.WPF.ViewModels
 
             SelectedCountMode = SelectedConfiguration.CountMode;
             IsRecursive = SelectedConfiguration.IsRecursive;
-            MaxDepth = SelectedConfiguration.MaxDepth;
+            MaxDepthText = SelectedConfiguration.MaxDepth?.ToString() ?? string.Empty;
             ParallelThreadCount = SelectedConfiguration.ParallelThreadCount;
             IncludeHiddenFiles = SelectedConfiguration.IncludeHiddenFiles;
             BoxDriveRefreshEnabled = SelectedConfiguration.BoxDriveRefreshEnabled;

@@ -32,6 +32,7 @@ namespace FileAuditor.Core.Models
         public List<CleanupItem> Items { get; set; } = new();
         public List<ScanError> Errors { get; set; } = new();
         public bool HasErrors => Errors.Any();
+        public string SizeFormatted => GetSizeFormatted();
 
         public string GetSizeFormatted()
         {
@@ -57,6 +58,10 @@ namespace FileAuditor.Core.Models
     {
         public string Path { get; set; } = string.Empty;
         public bool IsDirectory { get; set; }
+
+        /// <summary>Human-readable type label for UI display ("File" or "Folder").</summary>
+        public string TypeLabel => IsDirectory ? "Folder" : "File";
+
         public DateTime LastModified { get; set; }
         public long SizeBytes { get; set; }
         public bool WasDeleted { get; set; }

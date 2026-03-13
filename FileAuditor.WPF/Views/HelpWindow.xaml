@@ -51,6 +51,15 @@
             <Setter Property="Margin" Value="0,10"/>
             <Setter Property="CornerRadius" Value="5"/>
         </Style>
+
+        <Style x:Key="InfoBox" TargetType="Border">
+            <Setter Property="Background" Value="#E3F2FD"/>
+            <Setter Property="BorderBrush" Value="#1976D2"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Margin" Value="0,10"/>
+            <Setter Property="CornerRadius" Value="5"/>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -229,7 +238,7 @@ C:\CORP BOX\Box\ProjectFiles
             </TabItem>
 
             <!-- Cleanup Help Tab -->
-            <TabItem Header="Cleanup Help">
+            <TabItem Header="Delete Help">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="20">
                         <TextBlock Text="Safe File Cleanup" Style="{StaticResource HelpSectionHeader}"/>
@@ -453,6 +462,79 @@ C:\Source\ProjectB,D:\Archive\ProjectB
                             • Cleanup Target: Files Only<LineBreak/>
                             • Date Mode: Date Range<LineBreak/>
                             • Start Date: 1/1/2025, End Date: 1/31/2025
+                        </TextBlock>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Move to Folder Help Tab -->
+            <TabItem Header="Move to Folder">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="20">
+                        <TextBlock Text="Move to Folder" Style="{StaticResource HelpSectionHeader}"/>
+
+                        <Border Style="{StaticResource InfoBox}">
+                            <StackPanel>
+                                <TextBlock FontWeight="Bold" Margin="0,0,0,5">ℹ️ Move vs Delete</TextBlock>
+                                <TextBlock TextWrapping="Wrap">
+                                    The Move to Folder tab relocates matched files/folders to a destination instead of deleting them.<LineBreak/>
+                                    Use this tab for archiving or reorganizing files while keeping them safe.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="Input Modes" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+    <Bold>Single Move:</Bold><LineBreak/>
+    Enter one source folder and one destination folder using the text boxes and Browse buttons.<LineBreak/>
+    All matched files/folders from the source are moved to the destination.<LineBreak/>
+    <LineBreak/>
+    <Bold>Batch Move:</Bold><LineBreak/>
+    Enter multiple source,destination pairs — one pair per line in the text area.<LineBreak/>
+    Format: C:\Source,D:\Destination<LineBreak/>
+    Use Import CSV to load a two-column CSV file (source in column 1, destination in column 2).
+                        </TextBlock>
+
+                        <TextBlock Text="Destination Path Rules" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+    • Relative path structure is preserved at the destination.<LineBreak/>
+    Example: C:\Source\SubA\file.txt → D:\Archive\SubA\file.txt<LineBreak/>
+    <LineBreak/>
+    • Destination directories are created automatically if they don't exist.<LineBreak/>
+    • Existing files at the destination are overwritten.<LineBreak/>
+    • Moving to a sub-directory of the source is safe — items already inside the destination are automatically skipped.
+                        </TextBlock>
+
+                        <TextBlock Text="Move Workflow" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+    <Bold>Step 1: Choose Input Mode</Bold><LineBreak/>
+    • Select Single for a one-time source/destination pair<LineBreak/>
+    • Select Batch to enter multiple pairs or import from CSV<LineBreak/>
+    <LineBreak/>
+    <Bold>Step 2: Configure Filters</Bold><LineBreak/>
+    • Use Cleanup Target, Date Criteria, and File Type Filters just like the Delete tab<LineBreak/>
+    • All the same filtering options apply<LineBreak/>
+    <LineBreak/>
+    <Bold>Step 3: Analyze (Preview)</Bold><LineBreak/>
+    • Ensure "Dry Run" is checked<LineBreak/>
+    • Click "Analyze" to identify candidate files/folders<LineBreak/>
+    • Review the Move Analysis results — check Destination shown per path<LineBreak/>
+    • Expand items to see individual files and their planned destination<LineBreak/>
+    <LineBreak/>
+    <Bold>Step 4: Execute Move</Bold><LineBreak/>
+    • If satisfied with preview, uncheck "Dry Run"<LineBreak/>
+    • Click "Execute Move"<LineBreak/>
+    • Confirm when prompted<LineBreak/>
+    • After completion, "Files Moved" and "Folders Moved" counters show results<LineBreak/>
+    • The "Moved To" column shows the actual destination path for each item
+                        </TextBlock>
+
+                        <TextBlock Text="Safety Notes" Style="{StaticResource HelpSubHeader}"/>
+                        <TextBlock Style="{StaticResource HelpText}">
+    • "Move to Recycle Bin" is not available in Move mode — moves are direct file system operations.<LineBreak/>
+    • Dry Run always previews without moving anything — use it first!<LineBreak/>
+    • Cross-drive moves are supported (e.g., C: to D:).<LineBreak/>
+    • If a move fails for an individual item, the error is recorded and other items continue.
                         </TextBlock>
                     </StackPanel>
                 </ScrollViewer>

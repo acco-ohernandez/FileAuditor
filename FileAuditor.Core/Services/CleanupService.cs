@@ -399,10 +399,18 @@ namespace FileAuditor.Core.Services
             CancellationToken cancellationToken,
             IProgress<CleanupProgress>? progress)
         {
-            int processed = 0;
-            int total = result.Items.Count;
+            // Sort deepest paths first so children are always deleted before their parent
+            // directory. Without this, a recursive folder delete removes its contents, and
+            // the individually-listed child items later fail with "Could not find".
+            var orderedItems = result.Items
+                .OrderByDescending(item =>
+                    item.Path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Length)
+                .ToList();
 
-            foreach (var item in result.Items)
+            int processed = 0;
+            int total = orderedItems.Count;
+
+            foreach (var item in orderedItems)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -490,12 +498,32 @@ namespace FileAuditor.Core.Services
             // Ensure the destination root exists before processing items.
             Directory.CreateDirectory(result.DestinationPath);
 
-            int processed = 0;
-            int total = result.Items.Count;
+            // Guard: if the destination is a subfolder of the source, items already
+            // inside the destination would be moved into themselves. Skip them so that
+            // a second Analyze+Execute cycle after a previous run doesn't corrupt data.
+            bool destInsideSource = IsSubPath(result.Path, result.DestinationPath);
 
-            foreach (var item in result.Items)
+            // Sort deepest paths first so children are always moved before their parent
+            // directory. Without this, MoveDirectoryRecursive moves all contents of a
+            // folder, and then individually-listed child items later fail with "source not found".
+            var orderedItems = result.Items
+                .OrderByDescending(item =>
+                    item.Path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Length)
+                .ToList();
+
+            int processed = 0;
+            int total = orderedItems.Count;
+
+            foreach (var item in orderedItems)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+
+                if (destInsideSource && IsSubPath(result.DestinationPath, item.Path))
+                {
+                    _logger?.LogWarning("Skipping {Path} — already inside destination folder {Dest}", item.Path, result.DestinationPath);
+                    processed++;
+                    continue;
+                }
 
                 try
                 {
@@ -579,6 +607,14 @@ namespace FileAuditor.Core.Services
 
             // Delete the now-empty source directory
             Directory.Delete(sourceDir, recursive: true);
+        }
+
+        // Returns true if child is the same path as parent or is nested inside it.
+        private static bool IsSubPath(string parent, string child)
+        {
+            var parentFull = Path.GetFullPath(parent).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            var childFull  = Path.GetFullPath(child).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            return childFull.StartsWith(parentFull, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

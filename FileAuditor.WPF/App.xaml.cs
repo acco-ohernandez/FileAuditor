@@ -58,7 +58,8 @@ namespace FileAuditor.WPF
 
             // ViewModels
             services.AddSingleton<MainViewModel>();
-            services.AddSingleton<CleanupViewModel>();
+            // CleanupViewModel is NOT registered here — MainWindow constructs two instances
+            // manually (Delete tab + Move tab) with different initialMode parameters.
 
             // Views
             services.AddSingleton<MainWindow>();

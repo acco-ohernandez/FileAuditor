@@ -451,7 +451,8 @@ namespace FileAuditor.CLI
                 }
 
                 // Export results
-                var finalOutputPath = outputPath ?? $"cleanup_results_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+                var cliOpLabel = config.OperationMode == CleanupOperationMode.MoveToFolder ? "move" : "delete";
+                var finalOutputPath = outputPath ?? $"{cliOpLabel}_results_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
                 finalOutputPath = finalOutputPath.Replace("{timestamp}", DateTime.Now.ToString("yyyyMMdd_HHmmss"));
 
                 var outputDir = Path.GetDirectoryName(finalOutputPath);
