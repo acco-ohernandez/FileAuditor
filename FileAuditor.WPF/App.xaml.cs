@@ -93,14 +93,14 @@ namespace FileAuditor.WPF
             Log.Fatal(e.Exception,
                 "Unhandled exception on WPF Dispatcher thread: {Message}", e.Exception.Message);
 
-            MessageBox.Show(
+            System.Windows.MessageBox.Show(
                 $"An unexpected error occurred:\n\n{e.Exception.Message}\n\n" +
                 $"The error has been logged. The application will continue running.\n\n" +
                 $"If the problem persists, please check the logs in:\n" +
                 $"%LocalAppData%\\FileAuditor\\Logs\\",
                 "Unexpected Error",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Error);
 
             e.Handled = true; // Prevents process termination.
         }
