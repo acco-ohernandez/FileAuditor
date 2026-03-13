@@ -26,9 +26,24 @@ namespace FileAuditor.Core.Services
             IProgress<ScanProgress>? progress = null)
         {
             var results = new ConcurrentBag<ScanResult>();
+
+            // Cap parallelism to 2 when any source path is on Box Drive.
+            // Box Drive serialises cloud I/O internally — more than 2 concurrent
+            // scanners compete for the same sync bandwidth and slow each other down
+            // rather than speeding up.  Local and network paths are unaffected.
+            bool hasBoxDrivePaths = paths.Any(p => p.IsBoxDrivePath);
+            int effectiveThreadCount = hasBoxDrivePaths
+                ? Math.Min(config.ParallelThreadCount, 2)
+                : config.ParallelThreadCount;
+
+            if (hasBoxDrivePaths && config.ParallelThreadCount > 2)
+                _logger?.LogInformation(
+                    "Box Drive paths detected — capping parallel threads from {Configured} to 2 to avoid sync contention",
+                    config.ParallelThreadCount);
+
             var options = new ParallelOptions
             {
-                MaxDegreeOfParallelism = config.ParallelThreadCount,
+                MaxDegreeOfParallelism = effectiveThreadCount,
                 CancellationToken = cancellationToken
             };
 
@@ -331,6 +346,15 @@ namespace FileAuditor.Core.Services
                         }
                     }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                // Re-throw so ScanPathAsync's catch (OperationCanceledException) handles it,
+                // sets ScanStatus.Cancelled, and stops the recursive scan immediately.
+                // Without this re-throw the cancellation would be swallowed by catch (Exception)
+                // and recorded as a scan error, causing the scan to appear as Failed rather
+                // than Cancelled and potentially continuing to enumerate files unnecessarily.
+                throw;
             }
             catch (Exception ex)
             {

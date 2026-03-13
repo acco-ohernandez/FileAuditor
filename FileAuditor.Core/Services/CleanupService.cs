@@ -244,6 +244,9 @@ namespace FileAuditor.Core.Services
                                 Exception = ex
                             });
                         }
+                        // OperationCanceledException is intentionally not caught here —
+                        // it propagates up through the call stack so AnalyzeAsync can
+                        // set CleanupStatus.Cancelled and stop the scan immediately.
                     }
                 }
 
@@ -253,6 +256,14 @@ namespace FileAuditor.Core.Services
                     CurrentOperation = $"Scanned: {result.FilesIdentified} files, {result.FoldersIdentified} folders",
                     ItemsIdentified = result.FilesIdentified + result.FoldersIdentified
                 });
+            }
+            catch (OperationCanceledException)
+            {
+                // Re-throw so AnalyzeAsync's catch (OperationCanceledException) handles it
+                // correctly, sets CleanupStatus.Cancelled, and stops the scan.
+                // Without this re-throw the cancellation would be swallowed by catch (Exception),
+                // recorded as an UnknownError, and the analysis would incorrectly appear to succeed.
+                throw;
             }
             catch (Exception ex)
             {
