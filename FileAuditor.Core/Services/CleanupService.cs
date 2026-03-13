@@ -95,17 +95,37 @@ namespace FileAuditor.Core.Services
             CancellationToken cancellationToken,
             IProgress<CleanupProgress>? progress = null)
         {
-            if (config.DryRun)
-            {
-                _logger?.LogWarning("DryRun mode is enabled. No files will be deleted.");
-                return analysisResult;
-            }
-
+            bool isMoveMode = config.OperationMode == CleanupOperationMode.MoveToFolder;
             analysisResult.StartTime = DateTime.Now;
 
             try
             {
-                if (config.OperationMode == CleanupOperationMode.MoveToFolder)
+                if (config.DryRun)
+                {
+                    // DryRun simulation: walk every item and mark it with WouldBeDeleted /
+                    // WouldBeMoved + compute the destination path. Nothing is touched on disk.
+                    // The result is returned with Status=Completed and WasDryRun=true so the
+                    // ViewModel and DataGrid can display a full preview.
+                    _logger?.LogWarning(
+                        "DryRun mode is enabled — no files will be {Action}. Simulating operation.",
+                        isMoveMode ? "moved" : "deleted");
+
+                    await Task.Run(
+                        () => SimulateDryRun(analysisResult, config, cancellationToken, progress),
+                        cancellationToken);
+
+                    analysisResult.Status = CleanupStatus.Completed;
+
+                    var simFiles   = isMoveMode ? analysisResult.FilesWouldMove   : analysisResult.FilesWouldDelete;
+                    var simFolders = isMoveMode ? analysisResult.FoldersWouldMove : analysisResult.FoldersWouldDelete;
+                    _logger?.LogInformation(
+                        "DryRun simulation complete. Would {Action} {Files} files, {Folders} folders.",
+                        isMoveMode ? "move" : "delete", simFiles, simFolders);
+
+                    return analysisResult;
+                }
+
+                if (isMoveMode)
                 {
                     analysisResult.Status = CleanupStatus.Moving;
                     await Task.Run(() =>
@@ -153,6 +173,66 @@ namespace FileAuditor.Core.Services
             }
 
             return analysisResult;
+        }
+
+        /// <summary>
+        /// Simulates the execute phase without touching any files.
+        /// Stamps <see cref="CleanupItem.WouldBeDeleted"/> / <see cref="CleanupItem.WouldBeMoved"/>
+        /// on every item, computes <see cref="CleanupItem.WouldMovedToPath"/> for Move mode, and
+        /// increments the <c>FilesWouldDelete</c> / <c>FoldersWouldMove</c> counters on
+        /// <paramref name="result"/> so the DataGrid and summary section can show a full preview.
+        /// </summary>
+        private void SimulateDryRun(
+            CleanupResult result,
+            CleanupConfiguration config,
+            CancellationToken cancellationToken,
+            IProgress<CleanupProgress>? progress)
+        {
+            bool isMoveMode = config.OperationMode == CleanupOperationMode.MoveToFolder;
+            int processed = 0;
+            int total = result.Items.Count;
+
+            foreach (var item in result.Items)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (isMoveMode)
+                {
+                    item.WouldBeMoved = true;
+
+                    // Compute what the destination path would be so the DataGrid shows it.
+                    if (!string.IsNullOrWhiteSpace(result.DestinationPath))
+                    {
+                        try
+                        {
+                            string relativePath = Path.GetRelativePath(result.Path, item.Path);
+                            item.WouldMovedToPath = Path.Combine(result.DestinationPath, relativePath);
+                        }
+                        catch
+                        {
+                            item.WouldMovedToPath = result.DestinationPath;
+                        }
+                    }
+
+                    if (item.IsDirectory) result.FoldersWouldMove++;
+                    else result.FilesWouldMove++;
+                }
+                else
+                {
+                    item.WouldBeDeleted = true;
+                    if (item.IsDirectory) result.FoldersWouldDelete++;
+                    else result.FilesWouldDelete++;
+                }
+
+                processed++;
+                progress?.Report(new CleanupProgress
+                {
+                    CurrentPath = item.Path,
+                    CurrentOperation = $"Previewing... {processed}/{total}",
+                    PercentComplete = (int)((processed / (double)total) * 100),
+                    ItemsProcessed = processed
+                });
+            }
         }
 
         private void ScanForCleanup(

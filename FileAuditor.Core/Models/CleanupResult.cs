@@ -28,6 +28,13 @@ namespace FileAuditor.Core.Models
         public long FoldersMoved { get; set; }
         public long TotalSizeBytes { get; set; }
 
+        // DryRun simulation counters — populated when WasDryRun is true.
+        // Show how many items *would* have been affected without touching any files.
+        public long FilesWouldDelete { get; set; }
+        public long FoldersWouldDelete { get; set; }
+        public long FilesWouldMove { get; set; }
+        public long FoldersWouldMove { get; set; }
+
         // Details
         public List<CleanupItem> Items { get; set; } = new();
         public List<ScanError> Errors { get; set; } = new();
@@ -69,5 +76,33 @@ namespace FileAuditor.Core.Models
         public bool WasMoved { get; set; }
         public string? MovedToPath { get; set; }
         public string? MoveError { get; set; }
+
+        // DryRun simulation flags — set by CleanupService.SimulateDryRun
+        // when config.DryRun is true. No files are touched.
+        public bool WouldBeDeleted { get; set; }
+        public bool WouldBeMoved { get; set; }
+
+        /// <summary>
+        /// The path where this item would be (or was actually) moved.
+        /// In DryRun mode this is the computed destination; after a real move it is
+        /// the actual destination. Bind to this property in the DataGrid instead of
+        /// <see cref="MovedToPath"/> so both modes show a populated column.
+        /// </summary>
+        public string? WouldMovedToPath { get; set; }
+        public string? DisplayMovedToPath => MovedToPath ?? WouldMovedToPath;
+
+        /// <summary>Human-readable action status for the Delete tab DataGrid.</summary>
+        public string DeleteActionLabel =>
+            DeletionError  != null    ? "Error"         :
+            WasDeleted                ? "Deleted"        :
+            WouldBeDeleted            ? "Would Delete"   :
+                                        "Identified";
+
+        /// <summary>Human-readable action status for the Move to Folder tab DataGrid.</summary>
+        public string MoveActionLabel =>
+            MoveError  != null ? "Error"       :
+            WasMoved           ? "Moved"        :
+            WouldBeMoved       ? "Would Move"   :
+                                 "Identified";
     }
 }

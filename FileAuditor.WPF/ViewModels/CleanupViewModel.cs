@@ -62,6 +62,7 @@ namespace FileAuditor.WPF.ViewModels
         private bool _includeHiddenFiles = false;
 
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(ExecuteButtonLabel))]
         private bool _dryRun = true;
 
         [ObservableProperty]
@@ -79,8 +80,24 @@ namespace FileAuditor.WPF.ViewModels
 
         public bool IsDeleteMode => OperationMode == CleanupOperationMode.Delete;
         public bool IsMoveMode => OperationMode == CleanupOperationMode.MoveToFolder;
-        public string ExecuteButtonLabel => OperationMode == CleanupOperationMode.MoveToFolder
-            ? "Execute Move" : "Execute Cleanup";
+
+        /// <summary>
+        /// Label for the Execute button. Reflects both the operation mode and whether
+        /// Dry Run is enabled so the button itself signals what clicking it will do:
+        ///   Dry Run ON  → "Preview Delete" / "Preview Move"
+        ///   Dry Run OFF → "Execute Cleanup" / "Execute Move"
+        /// </summary>
+        public string ExecuteButtonLabel =>
+            DryRun
+                ? (OperationMode == CleanupOperationMode.MoveToFolder ? "Preview Move"    : "Preview Delete")
+                : (OperationMode == CleanupOperationMode.MoveToFolder ? "Execute Move"    : "Execute Cleanup");
+
+        /// <summary>
+        /// True after a DryRun simulation completes. Drives the "PREVIEW ONLY" banner
+        /// visibility in both the Delete and Move to Folder tabs.
+        /// </summary>
+        [ObservableProperty]
+        private bool _showDryRunBanner = false;
 
         /// <summary>
         /// Hint text shown above the Paths to Clean text box.
@@ -691,32 +708,27 @@ namespace FileAuditor.WPF.ViewModels
                 return;
             }
 
-            if (DryRun)
-            {
-                var dryRunAction = OperationMode == CleanupOperationMode.MoveToFolder ? "moved" : "deleted";
-                MessageBox.Show($"Dry Run mode is enabled. No files will be {dryRunAction}.\n\nDisable Dry Run to perform the actual operation.",
-                    "Dry Run Mode", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
             var totalFiles = AnalysisResults.Sum(r => r.FilesIdentified);
             var totalFolders = AnalysisResults.Sum(r => r.FoldersIdentified);
             var totalSize = AnalysisResults.Sum(r => r.TotalSizeBytes);
 
-            string action;
-            if (OperationMode == CleanupOperationMode.MoveToFolder)
-                action = "move to per-path destinations";
-            else
-                action = MoveToRecycleBin ? "move to recycle bin" : "permanently delete";
-
-            var message = $"Are you sure you want to {action}:\n\n" +
-                          $"• {totalFiles} file(s)\n" +
-                          $"• {totalFolders} folder(s)\n" +
-                          $"• Total size: {FormatSize(totalSize)}\n\n" +
-                          $"This action cannot be easily undone!";
-
-            if (RequireConfirmation)
+            // DryRun: skip the confirmation dialog — the user clicked "Preview Delete/Move"
+            // knowing it is a simulation. Execute falls through to the service which
+            // simulates without touching any files.
+            if (!DryRun && RequireConfirmation)
             {
+                string action;
+                if (OperationMode == CleanupOperationMode.MoveToFolder)
+                    action = "move to per-path destinations";
+                else
+                    action = MoveToRecycleBin ? "move to recycle bin" : "permanently delete";
+
+                var message = $"Are you sure you want to {action}:\n\n" +
+                              $"• {totalFiles} file(s)\n" +
+                              $"• {totalFolders} folder(s)\n" +
+                              $"• Total size: {FormatSize(totalSize)}\n\n" +
+                              $"This action cannot be easily undone!";
+
                 var result = MessageBox.Show(message, "Confirm Cleanup",
                     MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
@@ -727,8 +739,10 @@ namespace FileAuditor.WPF.ViewModels
             try
             {
                 IsDeleting = true;
-                StatusMessage = OperationMode == CleanupOperationMode.MoveToFolder
-                    ? "Moving items..." : "Deleting items...";
+                ShowDryRunBanner = false; // reset banner while operation is in progress
+                StatusMessage = DryRun
+                    ? (OperationMode == CleanupOperationMode.MoveToFolder ? "Previewing move..." : "Previewing deletion...")
+                    : (OperationMode == CleanupOperationMode.MoveToFolder ? "Moving items..."    : "Deleting items...");
 
                 // Use the config snapshot from Analyze so Execute is consistent with the preview.
                 var config = _lastAnalysisConfig!;
@@ -748,21 +762,28 @@ namespace FileAuditor.WPF.ViewModels
                         progress);
                 }
 
-                // CleanupItem is a plain POCO (no INotifyPropertyChanged).  Force the
+                // CleanupItem is a plain POCO (no INotifyPropertyChanged). Force the
                 // DataGrid to re-bind by clearing and re-adding every result so that
-                // the updated WasMoved / MovedToPath / WasDeleted columns are visible.
+                // the updated WasMoved / MovedToPath / WasDeleted / WouldBe* columns are visible.
                 var resultsSnapshot = AnalysisResults.ToList();
                 AnalysisResults.Clear();
                 foreach (var r in resultsSnapshot)
                     AnalysisResults.Add(r);
 
+                // Show the "PREVIEW ONLY" banner when any result was a DryRun simulation.
+                ShowDryRunBanner = AnalysisResults.Any(r => r.WasDryRun);
+
                 bool isMoveMode = OperationMode == CleanupOperationMode.MoveToFolder;
-                var processedFiles = isMoveMode
-                    ? AnalysisResults.Sum(r => r.FilesMoved)
-                    : AnalysisResults.Sum(r => r.FilesDeleted);
-                var processedFolders = isMoveMode
-                    ? AnalysisResults.Sum(r => r.FoldersMoved)
-                    : AnalysisResults.Sum(r => r.FoldersDeleted);
+                bool wasDryRun  = AnalysisResults.Any(r => r.WasDryRun);
+
+                // Use simulation counters (WouldDelete/WouldMove) for DryRun summary;
+                // real counters (Deleted/Moved) for actual execution summary.
+                var processedFiles = wasDryRun
+                    ? (isMoveMode ? AnalysisResults.Sum(r => r.FilesWouldMove)   : AnalysisResults.Sum(r => r.FilesWouldDelete))
+                    : (isMoveMode ? AnalysisResults.Sum(r => r.FilesMoved)        : AnalysisResults.Sum(r => r.FilesDeleted));
+                var processedFolders = wasDryRun
+                    ? (isMoveMode ? AnalysisResults.Sum(r => r.FoldersWouldMove)  : AnalysisResults.Sum(r => r.FoldersWouldDelete))
+                    : (isMoveMode ? AnalysisResults.Sum(r => r.FoldersMoved)      : AnalysisResults.Sum(r => r.FoldersDeleted));
 
                 // Auto-export to logs folder
                 var logsFolder = Path.Combine(
@@ -771,7 +792,11 @@ namespace FileAuditor.WPF.ViewModels
 
                 Directory.CreateDirectory(logsFolder);
 
-                var opLabel = isMoveMode ? "move" : "delete";
+                // CSV filename includes a "preview_" prefix for DryRun exports so they
+                // are instantly distinguishable from real operation logs.
+                var opLabel = wasDryRun
+                    ? (isMoveMode ? "preview_move" : "preview_delete")
+                    : (isMoveMode ? "move"         : "delete");
                 var autoExportPath = Path.Combine(logsFolder,
                     $"{opLabel}_results_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
 
@@ -779,10 +804,15 @@ namespace FileAuditor.WPF.ViewModels
                 {
                     using var writer = new StreamWriter(autoExportPath);
 
+                    // DryRun exports include "Would Move To" instead of "Moved To"
                     if (isMoveMode)
-                        await writer.WriteLineAsync("Path,Type,Last Modified,Size (bytes),Status,Moved To,Error");
+                        await writer.WriteLineAsync(wasDryRun
+                            ? "Path,Type,Last Modified,Size (bytes),Action,Would Move To"
+                            : "Path,Type,Last Modified,Size (bytes),Action,Moved To,Error");
                     else
-                        await writer.WriteLineAsync("Path,Type,Last Modified,Size (bytes),Status,Error");
+                        await writer.WriteLineAsync(wasDryRun
+                            ? "Path,Type,Last Modified,Size (bytes),Action"
+                            : "Path,Type,Last Modified,Size (bytes),Action,Error");
 
                     foreach (var analysisResult in AnalysisResults)
                     {
@@ -792,45 +822,68 @@ namespace FileAuditor.WPF.ViewModels
 
                             if (isMoveMode)
                             {
-                                var status = item.WasMoved ? "Moved" : "Identified";
-                                var movedTo = item.MovedToPath ?? "";
+                                // Use ActionLabel (WouldBeMoved/WasMoved/Error) and the
+                                // DisplayMovedToPath which covers both real and simulated moves.
+                                var dest  = item.DisplayMovedToPath ?? "";
                                 var error = item.MoveError ?? "";
-                                await writer.WriteLineAsync(
-                                    $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{status},\"{movedTo}\",\"{error}\"");
+                                await writer.WriteLineAsync(wasDryRun
+                                    ? $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{item.MoveActionLabel},\"{dest}\""
+                                    : $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{item.MoveActionLabel},\"{dest}\",\"{error}\"");
                             }
                             else
                             {
-                                var status = item.WasDeleted ? "Deleted" : "Identified";
                                 var error = item.DeletionError ?? "";
-                                await writer.WriteLineAsync(
-                                    $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{status},\"{error}\"");
+                                await writer.WriteLineAsync(wasDryRun
+                                    ? $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{item.DeleteActionLabel}"
+                                    : $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{item.DeleteActionLabel},\"{error}\"");
                             }
                         }
                     }
 
-                    var verb = isMoveMode ? "moved" : "deleted";
-                    StatusMessage = $"Operation complete: {processedFiles} files, {processedFolders} folders {verb}";
+                    // Status message and completion dialog use different wording for DryRun.
+                    string statusVerb, title, summary;
+                    if (wasDryRun)
+                    {
+                        statusVerb = isMoveMode ? "would be moved" : "would be deleted";
+                        title      = isMoveMode ? "Preview Complete" : "Preview Complete";
+                        summary    = isMoveMode
+                            ? $"Would Move: {processedFiles} files, {processedFolders} folders"
+                            : $"Would Delete: {processedFiles} files, {processedFolders} folders";
+                    }
+                    else
+                    {
+                        statusVerb = isMoveMode ? "moved" : "deleted";
+                        title      = isMoveMode ? "Move Complete" : "Cleanup Complete";
+                        summary    = isMoveMode
+                            ? $"Moved: {processedFiles} files, {processedFolders} folders"
+                            : $"Deleted: {processedFiles} files, {processedFolders} folders";
+                    }
 
-                    var title = isMoveMode ? "Move Complete" : "Cleanup Complete";
-                    var summary = isMoveMode
-                        ? $"Moved: {processedFiles} files, {processedFolders} folders"
-                        : $"Deleted: {processedFiles} files, {processedFolders} folders";
+                    StatusMessage = $"{(wasDryRun ? "Preview" : "Operation")} complete: {processedFiles} files, {processedFolders} folders {statusVerb}";
 
-                    MessageBox.Show($"Operation completed successfully!\n\n" +
-                                   $"{summary}\n\n" +
+                    var completionNote = wasDryRun
+                        ? "⚠ This was a DRY RUN — no files were modified.\n\nDisable Dry Run and click the button again to perform the actual operation.\n\n"
+                        : "Operation completed successfully!\n\n";
+
+                    MessageBox.Show($"{completionNote}{summary}\n\n" +
                                    $"Results exported to:\n{autoExportPath}\n\n" +
                                    $"Logs folder: {logsFolder}",
-                        title, MessageBoxButton.OK, MessageBoxImage.Information);
+                        title, MessageBoxButton.OK,
+                        wasDryRun ? MessageBoxImage.Information : MessageBoxImage.Information);
 
-                    _logger.LogInformation("Operation completed. {Files} files, {Folders} folders {Verb}. Results: {Path}",
-                        processedFiles, processedFolders, verb, autoExportPath);
+                    _logger.LogInformation(
+                        "{Mode} complete. {Files} files, {Folders} folders {Verb}. Results: {Path}",
+                        wasDryRun ? "DryRun simulation" : "Operation",
+                        processedFiles, processedFolders, statusVerb, autoExportPath);
                 }
                 catch (Exception exportEx)
                 {
                     _logger.LogError(exportEx, "Error auto-exporting results");
 
-                    var verb2 = isMoveMode ? "moved" : "deleted";
-                    MessageBox.Show($"Operation completed successfully!\n\n" +
+                    var verb2 = wasDryRun
+                        ? (isMoveMode ? "would be moved" : "would be deleted")
+                        : (isMoveMode ? "moved" : "deleted");
+                    MessageBox.Show($"{(wasDryRun ? "Preview" : "Operation")} completed!\n\n" +
                                    $"Processed: {processedFiles} files, {processedFolders} folders {verb2}\n\n" +
                                    $"Warning: Could not export results:\n{exportEx.Message}",
                         "Operation Complete", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -871,6 +924,7 @@ namespace FileAuditor.WPF.ViewModels
         private void ClearResults()
         {
             AnalysisResults.Clear();
+            ShowDryRunBanner = false;
             StatusMessage = "Results cleared";
         }
 
@@ -899,9 +953,9 @@ namespace FileAuditor.WPF.ViewModels
 
                     using var writer = new StreamWriter(dialog.FileName);
                     if (isMoveExport)
-                        await writer.WriteLineAsync("Path,Type,Last Modified,Size,Status,Moved To");
+                        await writer.WriteLineAsync("Path,Type,Last Modified,Size,Action,Destination");
                     else
-                        await writer.WriteLineAsync("Path,Type,Last Modified,Size,Status");
+                        await writer.WriteLineAsync("Path,Type,Last Modified,Size,Action");
 
                     foreach (var result in AnalysisResults)
                     {
@@ -910,15 +964,15 @@ namespace FileAuditor.WPF.ViewModels
                             var type = item.IsDirectory ? "Folder" : "File";
                             if (isMoveExport)
                             {
-                                var status = item.WasMoved ? "Moved" : "Identified";
+                                // DisplayMovedToPath covers both real moves (MovedToPath) and
+                                // DryRun simulations (WouldMovedToPath).
                                 await writer.WriteLineAsync(
-                                    $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{status},\"{item.MovedToPath ?? ""}\"");
+                                    $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{item.MoveActionLabel},\"{item.DisplayMovedToPath ?? ""}\"");
                             }
                             else
                             {
-                                var status = item.WasDeleted ? "Deleted" : "Identified";
                                 await writer.WriteLineAsync(
-                                    $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{status}");
+                                    $"\"{item.Path}\",{type},{item.LastModified:yyyy-MM-dd HH:mm:ss},{item.SizeBytes},{item.DeleteActionLabel}");
                             }
                         }
                     }

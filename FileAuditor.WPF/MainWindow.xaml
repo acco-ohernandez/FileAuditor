@@ -876,6 +876,7 @@
                     <Grid Grid.Column="2">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
@@ -885,21 +886,32 @@
                            FontSize="16"
                            FontWeight="Bold"
                            VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding DeleteViewModel.AnalysisResults.Count, StringFormat=' ({0} paths)', RelativeSource={RelativeSource AncestorType=Window}}" 
-                           FontSize="14" 
-                           VerticalAlignment="Center" 
+                            <TextBlock Text="{Binding DeleteViewModel.AnalysisResults.Count, StringFormat=' ({0} paths)', RelativeSource={RelativeSource AncestorType=Window}}"
+                           FontSize="14"
+                           VerticalAlignment="Center"
                            Margin="5,0,0,0"/>
-                            <Button Content="Clear Results" 
+                            <Button Content="Clear Results"
                         Command="{Binding DeleteViewModel.ClearResultsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                         Style="{StaticResource ButtonStyle}"
                         Margin="20,0,0,0"/>
-                            <Button Content="Export Results" 
+                            <Button Content="Export Results"
                         Command="{Binding DeleteViewModel.ExportResultsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                         Style="{StaticResource ButtonStyle}"/>
                         </StackPanel>
 
+                        <!-- DryRun "PREVIEW ONLY" banner — visible after a simulation run -->
+                        <Border Grid.Row="1"
+                                Background="#FFF9C4" BorderBrush="#F9A825" BorderThickness="1"
+                                Padding="10,5" Margin="5,0,5,4"
+                                Visibility="{Binding DeleteViewModel.ShowDryRunBanner,
+                                             RelativeSource={RelativeSource AncestorType=Window},
+                                             Converter={StaticResource BoolToVisConverter}}">
+                            <TextBlock Text="⚠  PREVIEW ONLY — Dry Run is ON. The items below have NOT been modified."
+                                       FontWeight="SemiBold" Foreground="#E65100"/>
+                        </Border>
+
                         <!-- Results List -->
-                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="5">
+                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="5">
                             <ItemsControl ItemsSource="{Binding DeleteViewModel.AnalysisResults, RelativeSource={RelativeSource AncestorType=Window}}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -923,31 +935,39 @@
                                                         </StackPanel>
 
                                                         <StackPanel Grid.Column="1">
-                                                            <TextBlock Text="{Binding FilesDeleted, StringFormat='Files Deleted: {0:N0}'}" 
-                                                           Foreground="Red"
-                                                           FontWeight="SemiBold"/>
-                                                            <TextBlock Text="{Binding FoldersDeleted, StringFormat='Folders Deleted: {0:N0}'}" 
-                                                           Foreground="Red"
-                                                           FontWeight="SemiBold"/>
-                                                            <TextBlock Text="{Binding Status, StringFormat='Status: {0}'}" 
-                                                           FontWeight="SemiBold"/>
+                                                            <!-- Real delete stats (hidden during DryRun) -->
+                                                            <TextBlock Text="{Binding FilesDeleted, StringFormat='Files Deleted: {0:N0}'}"
+                                                                       Foreground="Red" FontWeight="SemiBold"
+                                                                       Visibility="{Binding WasDryRun, Converter={StaticResource BoolToVisConverter}, ConverterParameter=invert}"/>
+                                                            <TextBlock Text="{Binding FoldersDeleted, StringFormat='Folders Deleted: {0:N0}'}"
+                                                                       Foreground="Red" FontWeight="SemiBold"
+                                                                       Visibility="{Binding WasDryRun, Converter={StaticResource BoolToVisConverter}, ConverterParameter=invert}"/>
+                                                            <!-- DryRun simulation stats (only visible during DryRun) -->
+                                                            <TextBlock Text="{Binding FilesWouldDelete, StringFormat='Would Delete: {0:N0} files'}"
+                                                                       Foreground="DarkOrange" FontWeight="SemiBold"
+                                                                       Visibility="{Binding WasDryRun, Converter={StaticResource BoolToVisConverter}}"/>
+                                                            <TextBlock Text="{Binding FoldersWouldDelete, StringFormat='Would Delete: {0:N0} folders'}"
+                                                                       Foreground="DarkOrange" FontWeight="SemiBold"
+                                                                       Visibility="{Binding WasDryRun, Converter={StaticResource BoolToVisConverter}}"/>
+                                                            <TextBlock Text="{Binding Status, StringFormat='Status: {0}'}"
+                                                                       FontWeight="SemiBold"/>
                                                         </StackPanel>
                                                     </Grid>
 
                                                     <!-- Items List (expandable) -->
                                                     <Expander Header="Items to Delete" IsExpanded="True" Margin="0,10,0,0">
                                                         <DataGrid ItemsSource="{Binding Items}"
-                                                     AutoGenerateColumns="False"
-                                                     IsReadOnly="True"
-                                                     MaxHeight="300"
-                                                     GridLinesVisibility="Horizontal"
-                                                     AlternatingRowBackground="#F5F5F5">
+                                                                  AutoGenerateColumns="False"
+                                                                  IsReadOnly="True"
+                                                                  MaxHeight="300"
+                                                                  GridLinesVisibility="Horizontal"
+                                                                  AlternatingRowBackground="#F5F5F5">
                                                             <DataGrid.Columns>
                                                                 <DataGridTextColumn Header="Path" Binding="{Binding Path}" Width="2*"/>
                                                                 <DataGridTextColumn Header="Type" Binding="{Binding TypeLabel}" Width="80"/>
                                                                 <DataGridTextColumn Header="Last Modified"
-                                                                       Binding="{Binding LastModified, StringFormat='yyyy-MM-dd hh:mm:ss tt'}"
-                                                                       Width="170"/>
+                                                                                    Binding="{Binding LastModified, StringFormat='yyyy-MM-dd hh:mm:ss tt'}"
+                                                                                    Width="170"/>
                                                                 <DataGridTextColumn Header="Size" Binding="{Binding SizeBytes}" Width="100">
                                                                     <DataGridTextColumn.ElementStyle>
                                                                         <Style TargetType="TextBlock">
@@ -955,14 +975,12 @@
                                                                         </Style>
                                                                     </DataGridTextColumn.ElementStyle>
                                                                 </DataGridTextColumn>
-                                                                <DataGridCheckBoxColumn Header="Deleted" Binding="{Binding WasDeleted}" Width="80">
-                                                                    <DataGridCheckBoxColumn.ElementStyle>
-                                                                        <Style TargetType="CheckBox">
-                                                                            <Setter Property="HorizontalAlignment" Value="Center"/>
-                                                                            <Setter Property="IsEnabled" Value="False"/>
-                                                                        </Style>
-                                                                    </DataGridCheckBoxColumn.ElementStyle>
-                                                                </DataGridCheckBoxColumn>
+                                                                <!-- Action column replaces the boolean "Deleted" checkbox.
+                                                                     Shows "Deleted", "Would Delete", "Error", or "Identified"
+                                                                     via CleanupItem.DeleteActionLabel. -->
+                                                                <DataGridTextColumn Header="Action"
+                                                                                    Binding="{Binding DeleteActionLabel}"
+                                                                                    Width="110"/>
                                                             </DataGrid.Columns>
                                                         </DataGrid>
                                                     </Expander>
@@ -1350,6 +1368,7 @@
                     <Grid Grid.Column="2">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
@@ -1372,8 +1391,19 @@
                                     Style="{StaticResource ButtonStyle}"/>
                         </StackPanel>
 
+                        <!-- DryRun "PREVIEW ONLY" banner — visible after a simulation run -->
+                        <Border Grid.Row="1"
+                                Background="#FFF9C4" BorderBrush="#F9A825" BorderThickness="1"
+                                Padding="10,5" Margin="5,0,5,4"
+                                Visibility="{Binding MoveViewModel.ShowDryRunBanner,
+                                             RelativeSource={RelativeSource AncestorType=Window},
+                                             Converter={StaticResource BoolToVisConverter}}">
+                            <TextBlock Text="⚠  PREVIEW ONLY — Dry Run is ON. The items below have NOT been modified."
+                                       FontWeight="SemiBold" Foreground="#E65100"/>
+                        </Border>
+
                         <!-- Results List -->
-                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="5">
+                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="5">
                             <ItemsControl ItemsSource="{Binding MoveViewModel.AnalysisResults, RelativeSource={RelativeSource AncestorType=Window}}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -1401,12 +1431,20 @@
                                                         </StackPanel>
 
                                                         <StackPanel Grid.Column="1">
+                                                            <!-- Real move stats (hidden during DryRun) -->
                                                             <TextBlock Text="{Binding FilesMoved, StringFormat='Files Moved: {0:N0}'}"
-                                                                       Foreground="Green"
-                                                                       FontWeight="SemiBold"/>
+                                                                       Foreground="Green" FontWeight="SemiBold"
+                                                                       Visibility="{Binding WasDryRun, Converter={StaticResource BoolToVisConverter}, ConverterParameter=invert}"/>
                                                             <TextBlock Text="{Binding FoldersMoved, StringFormat='Folders Moved: {0:N0}'}"
-                                                                       Foreground="Green"
-                                                                       FontWeight="SemiBold"/>
+                                                                       Foreground="Green" FontWeight="SemiBold"
+                                                                       Visibility="{Binding WasDryRun, Converter={StaticResource BoolToVisConverter}, ConverterParameter=invert}"/>
+                                                            <!-- DryRun simulation stats (only visible during DryRun) -->
+                                                            <TextBlock Text="{Binding FilesWouldMove, StringFormat='Would Move: {0:N0} files'}"
+                                                                       Foreground="DarkOrange" FontWeight="SemiBold"
+                                                                       Visibility="{Binding WasDryRun, Converter={StaticResource BoolToVisConverter}}"/>
+                                                            <TextBlock Text="{Binding FoldersWouldMove, StringFormat='Would Move: {0:N0} folders'}"
+                                                                       Foreground="DarkOrange" FontWeight="SemiBold"
+                                                                       Visibility="{Binding WasDryRun, Converter={StaticResource BoolToVisConverter}}"/>
                                                             <TextBlock Text="{Binding Status, StringFormat='Status: {0}'}"
                                                                        FontWeight="SemiBold"/>
                                                         </StackPanel>
@@ -1433,15 +1471,14 @@
                                                                         </Style>
                                                                     </DataGridTextColumn.ElementStyle>
                                                                 </DataGridTextColumn>
-                                                                <DataGridTextColumn Header="Moved To" Binding="{Binding MovedToPath}" Width="2*"/>
-                                                                <DataGridCheckBoxColumn Header="Moved" Binding="{Binding WasMoved}" Width="70">
-                                                                    <DataGridCheckBoxColumn.ElementStyle>
-                                                                        <Style TargetType="CheckBox">
-                                                                            <Setter Property="HorizontalAlignment" Value="Center"/>
-                                                                            <Setter Property="IsEnabled" Value="False"/>
-                                                                        </Style>
-                                                                    </DataGridCheckBoxColumn.ElementStyle>
-                                                                </DataGridCheckBoxColumn>
+                                                                <!-- DisplayMovedToPath covers both real moves (MovedToPath)
+                                                                     and DryRun simulations (WouldMovedToPath). -->
+                                                                <DataGridTextColumn Header="Destination" Binding="{Binding DisplayMovedToPath}" Width="2*"/>
+                                                                <!-- Action column shows "Moved", "Would Move", "Error", or "Identified"
+                                                                     via CleanupItem.MoveActionLabel. -->
+                                                                <DataGridTextColumn Header="Action"
+                                                                                    Binding="{Binding MoveActionLabel}"
+                                                                                    Width="100"/>
                                                             </DataGrid.Columns>
                                                         </DataGrid>
                                                     </Expander>
